@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecturer Courses</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='navbar_styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='courses_styles.css') }}">
+    <script defer src="{{ url_for('static', filename='courses_script.js') }}"></script>
+</head>
+<body>
+
+    {% include 'navbar_lecturer.html' %}
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <h1>Your Courses</h1>
+
+        <div class="course-grid">
+            <!-- Course 1 -->
+            <div class="course-card">
+                <img src="{{ url_for('static', filename='images/software_engineering.jpg') }}" alt="Software Engineering">
+                <div class="info">
+                    <h3>Course: Software Engineering</h3>
+                    <p>Module: Agile Development</p>
+                </div>
+                <div class="btn-container">
+                    <a href="{{ url_for('software_engineering_dashboard') }}">View Details</a>
+                </div>
+            </div>
+
+            <!-- Course 2 -->
+            <div class="course-card">
+                <img src="{{ url_for('static', filename='images/data_science.jpg') }}" alt="Data Science">
+                <div class="info">
+                    <h3>Course: Data Science</h3>
+                    <p>Module: Machine Learning</p>
+                </div>
+                <div class="btn-container">
+                    <a href="{{ url_for('data_science_dashboard_page') }}">View Details</a> 
+
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

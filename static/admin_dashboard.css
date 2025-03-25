@@ -1,0 +1,86 @@
+/* ✅ General Layout */
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f8f9fa;
+}
+
+/* ✅ Main Dashboard Container */
+.dashboard-container {
+    margin-left: 250px; /* Adjusted for sidebar */
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* ✅ Dashboard Metrics Section */
+.dashboard-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    width: 80%;
+    margin-bottom: 30px;
+}
+
+/* ✅ Metric Box Styling */
+.metric-box {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.metric-box h2 {
+    color: #2f3b52;
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.metric-box p {
+    font-size: 22px;
+    font-weight: bold;
+    color: #007BFF;
+}
+
+/* ✅ Embedded Dashboard */
+.dashboard-iframe-container {
+    width: 90%;
+    height: 600px;
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.dashboard-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* ✅ Recent Activities */
+.recent-activities {
+    width: 80%;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.recent-activities h2 {
+    margin-bottom: 15px;
+}
+
+.recent-activities ul {
+    list-style: none;
+    padding: 0;
+}
+
+.recent-activities li {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}

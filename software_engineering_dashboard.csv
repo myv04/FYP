@@ -1,0 +1,21 @@
+ID,Student,Final Grade (%),Attendance (%),Assignment 1 Score,Assignment 2 Score,Exam Score,Status
+SE1001,Student 1,91,88,90,53,83,Deferred
+SE1002,Student 2,71,95,77,76,69,Enrolled
+SE1003,Student 3,99,83,87,86,99,Deferred
+SE1004,Student 4,94,80,76,60,80,Deferred
+SE1005,Student 5,98,74,82,91,62,Enrolled
+SE1006,Student 6,100,88,88,74,59,Deferred
+SE1007,Student 7,92,85,83,84,89,Enrolled
+SE1008,Student 8,65,79,55,60,76,Deferred
+SE1009,Student 9,87,97,89,50,57,Enrolled
+SE1010,Student 10,95,91,79,70,57,Deferred
+SE1011,Student 11,68,78,90,58,76,Deferred
+SE1012,Student 12,91,79,74,57,76,Dropped
+SE1013,Student 13,69,78,87,64,62,Enrolled
+SE1014,Student 14,83,93,75,67,53,Dropped
+SE1015,Student 15,89,86,81,87,58,Enrolled
+SE1016,Student 16,68,77,70,64,78,Deferred
+SE1017,Student 17,97,80,52,72,53,Deferred
+SE1018,Student 18,66,75,50,71,80,Deferred
+SE1019,Student 19,100,87,90,74,93,Enrolled
+SE1020,Student 20,94,82,95,77,72,Deferred

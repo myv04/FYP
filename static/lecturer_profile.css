@@ -1,0 +1,73 @@
+/* lecturer_profile.css */
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    margin: 0;
+    padding: 0;
+}
+
+.main-content {
+    margin-left: 250px;  /* Align with the sidebar width */
+    padding: 30px;
+}
+
+.profile-container {
+    padding: 30px;
+}
+
+/* Profile Header */
+.profile-header {
+    text-align: center;
+    background-color: #007BFF;
+    color: white;
+    padding: 40px;
+    border-radius: 15px;
+}
+
+.profile-header .profile-pic {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 5px solid white;
+}
+
+.profile-header .lecturer-name {
+    font-size: 30px;
+    margin: 15px 0;
+}
+
+.profile-header .lecturer-id {
+    font-size: 20px;
+}
+
+/* Profile Sections */
+.profile-sections {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 20px;
+}
+
+/* Info Section */
+.info-section {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.info-section h2 {
+    margin-bottom: 15px;
+}
+
+.info-section p {
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+    .profile-sections {
+        grid-template-columns: 1fr;
+    }
+}
