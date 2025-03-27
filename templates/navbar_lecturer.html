@@ -1,0 +1,23 @@
+<div class="sidebar">
+    <h2 class="logo">Lecturer Portal</h2>
+    <nav>
+        <a href="{{ url_for('home_lecturer') }}">Home</a>
+        <a href="{{ url_for('lecturer_profile') }}">Name</a>
+        <a href="{{ url_for('courses') }}">Courses</a>
+
+        <!-- Dropdown for Students -->
+        <div class="dropdown">
+            <button class="dropbtn">Students</button>
+            <div class="dropdown-content">
+                <a href="{{ url_for('students_overview_page') }}">📘 Students Overview</a>
+                <a href="{{ url_for('student_attendance_insights_page') }}">📌 Attendance Insights</a>
+
+            </div>
+        </div>
+
+        <a href="{{ url_for('course_registers_page') }}"> Course Registers</a>
+
+        <a href="{{ url_for('export_lecturer') }}">Export </a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </nav>
+</div>

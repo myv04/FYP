@@ -1,0 +1,80 @@
+/* login_styles.css */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f0f4f8;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #333;
+}
+
+.login-container {
+    background-color: #ffffff;
+    padding: 60px 50px; /* Increased padding for the box */
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* Larger shadow for a modern look */
+    width: 400px; /* Increased width for bigger input fields */
+    text-align: center;
+}
+
+h2 {
+    color: #333;
+    margin-bottom: 40px; /* Increased space below the header */
+    font-size: 36px; /* Increased font size for the header */
+}
+
+input, button {
+    display: block;
+    width: 100%;
+    padding: 18px; /* Increased padding for the inputs */
+    margin: 15px 0; /* Increased margin between fields */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 18px; /* Increased font size for input fields */
+    background-color: #f9f9f9;
+    color: #333;
+}
+
+input:focus, button:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-size: 18px; /* Increased font size for the button */
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+.flash {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 6px;
+    width: 100%;
+    text-align: center;
+}
+
+.flash.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.flash.danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}

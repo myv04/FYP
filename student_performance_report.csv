@@ -1,0 +1,33 @@
+STUDENT PERFORMANCE DASHBOARD
+Student: Mohammed Vohra
+Student ID: 210034354
+
+Average Attendance,65%
+
+Module Name,Grade %
+CS201: Data Structure & Algorithm,70
+CS202: Web Development,73
+CS203: Artificial Intelligence,25.5
+CS204: Database Management,36
+CS205: Cybersecurity,68.8
+
+Module Name,Assignment Name,Score,Status
+CS202: Web Development,Responsive Design Project,82%,Completed
+CS203: Artificial Intelligence,Neural Network Implementation,85%,Completed
+CS203: Artificial Intelligence,Ethical Concerns in AI Development,n/a,Not Completed
+CS203: Artificial Intelligence,Sentiment Analysis using NLP,n/a,Not Started
+CS204: Database Management,Normalization Techniques,88%,Completed
+CS204: Database Management,SQL Query Optimization,92%,Completed
+CS205: Cybersecurity,Network Security Protocols,80%,Completed
+CS205: Cybersecurity,Ethical Hacking Fundamentals,68%,Completed
+CS205: Cybersecurity,Malware Analysis,n/a,Not Started
+
+Module Name,Exam Name,Score,Status
+CS201: Data Structure & Algorithm,DSA Exam,78%,Completed
+CS202: Web Development,Web Dev Exam,85%,Completed
+CS204: Database Management,Ethical Concerns in AI Development,n/a,Not Completed
+
+Module Name,Assignment Name,Deadline Date,Days Left
+CS203: Artificial Intelligence,Ethical Concerns in AI Development,21/03/2025,10
+CS202: Web Development,Sentiment Analysis using NLP,TBC,TBC
+CS204: Database Management,Malware Analysis,TBC,TBC
