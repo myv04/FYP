@@ -1854,6 +1854,8 @@ def download_csv_course_registers():
 
 ## for admin course management
 
+
+# ✅ Initialize Database
 def init_db():
     """ Initialize the database and create tables if they don't exist. """
     conn = sqlite3.connect("courses.db")
@@ -1932,7 +1934,7 @@ def delete_course(course_id):
     return jsonify({"message": "Course deleted successfully"}), 200
 
 # ✅ Initialize DB
-init_db()   
+init_db()
 
 
 
