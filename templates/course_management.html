@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Course Management</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='lecturer_navbar.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- ✅ Load Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         /* ✅ Full-page layout */
@@ -69,12 +69,21 @@
         .edit-btn { background-color: #4CAF50; color: white; }
         .delete-btn { background-color: #f44336; color: white; }
         .add-btn { background-color: #008CBA; color: white; }
+        .view-btn { background-color: #008000; color: white; }
 
         /* ✅ Chart container */
         .chart-container {
             width: 70%;
             margin: 30px auto;
         }
+
+        /* ✅ Button container styling */
+        .button-container {
+            width: 90%; /* Match table width */
+            margin: 0 auto 10px; /* Add margin below buttons */
+            text-align: center; /* Center the buttons */
+        }
+
     </style>
 </head>
 <body>
@@ -84,6 +93,12 @@
 
     <div class="main-content">
         <h1 class="dashboard-title">📚 Course Management</h1>
+
+        <!-- ✅ Buttons ABOVE the table -->
+        <div class="button-container">
+            <button class="add-btn" onclick="addCourse()">➕ Add Course</button>
+            <button onclick="refreshData()">🔄 Refresh Data</button>
+        </div>
 
         <!-- ✅ Course Table -->
         <h2>📖 Course Overview</h2>
@@ -103,60 +118,58 @@
             </tbody>
         </table>
 
-        <button class="add-btn" onclick="addCourse()">➕ Add Course</button>
-        <button onclick="refreshData()">🔄 Refresh Data</button>
-
-       
-
-        <!-- ✅ Embedded Course Dashboard -->
-        <div class="dashboard-container">
-            <iframe src="/course_dashboard/" class="dashboard-frame"></iframe>
-        </div>
     </div>
 
     <script>
         // ✅ Fetch and display course data
         async function refreshData() {
-            const response = await fetch('/api/courses');
-            const courses = await response.json();
+            try {
+                const response = await fetch('/api/courses');
+                const courses = await response.json();
 
-            let tableHTML = '';
-            courses.forEach(course => {
-                tableHTML += `<tr>
-                    <td>${course.name}</td>
-                    <td>${course.code}</td>
-                    <td>${course.students}</td>
-                    <td>${course.lecturers}</td>
-                    <td>${course.status}</td>
-                    <td>
-                        <button class="edit-btn" onclick="editCourse('${course.id}')">✏ Edit</button>
-                        <button class="delete-btn" onclick="deleteCourse('${course.id}')">❌ Delete</button>
-                    </td>
-                </tr>`;
-            });
-            document.getElementById('course-table-body').innerHTML = tableHTML;
+                let tableHTML = '';
+                courses.forEach(course => {
+                    tableHTML += `<tr>
+                        <td>${course.name || 'N/A'}</td>
+                        <td>${course.code || 'N/A'}</td>
+                        <td>${course.students || 'N/A'}</td>
+                        <td>${course.lecturers || 'N/A'}</td>
+                        <td>${course.status || 'N/A'}</td>
+                        <td>
+                            <button class="view-btn" onclick="viewCourse('${course.id}')">👁️ View</button>
+                            <button class="edit-btn" onclick="editCourse('${course.id}')">✏ Edit</button>
+                            <button class="delete-btn" onclick="deleteCourse('${course.id}')">❌ Delete</button>
+                        </td>
+                    </tr>`;
+                });
+                document.getElementById('course-table-body').innerHTML = tableHTML;
 
-            // ✅ Update Pie Chart
-            const ctx = document.getElementById('enrollmentChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: courses.map(c => c.name),
-                    datasets: [{
-                        data: courses.map(c => c.students),
-                        backgroundColor: ['red', 'blue', 'green', 'purple']
-                    }]
+                // ✅ Update Pie Chart (if you still need it)
+                if (document.getElementById('enrollmentChart')) {
+                    const ctx = document.getElementById('enrollmentChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: courses.map(c => c.name),
+                            datasets: [{
+                                data: courses.map(c => c.students),
+                                backgroundColor: ['red', 'blue', 'green', 'purple']
+                            }]
+                        }
+                    });
                 }
-            });
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                document.getElementById('course-table-body').innerHTML = '<tr><td colspan="6">Failed to load data. Please check the API endpoint.</td></tr>';
+            }
         }
 
         function addCourse() { alert('Add Course Clicked'); }
         function editCourse(id) { alert('Edit Course: ' + id); }
         function deleteCourse(id) { alert('Delete Course: ' + id); }
+        function viewCourse(id) { alert('View Course: ' + id); }
 
         refreshData(); // Load data on page load
     </script>
-
 </body>
 </html>
-
