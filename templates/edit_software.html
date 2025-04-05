@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Data Science Course</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='lecturer_navbar.css') }}">
+
+    <style>
+        /* ✅ Full-page layout */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* ✅ Form container */
+        .form-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            width: 50%;
+            margin-top: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .btn-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .save-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .cancel-btn {
+            background-color: #f44336;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ✅ Include Admin Sidebar/Navbar -->
+    {% include 'navbar_admin.html' %}
+
+    <div class="form-container">
+        <h1>✏ Edit Data Science Course</h1>
+        <form action="{{ url_for('edit_course', course_id=course['id']) }}" method="POST">
+            <label for="name">Course Name:</label>
+            <input type="text" id="name" name="name" value="{{ course['name'] }}" required>
+
+            <label for="code">Course Code:</label>
+            <input type="text" id="code" name="code" value="{{ course['code'] }}" required>
+
+            <label for="students">Students Enrolled:</label>
+            <input type="number" id="students" name="students" value="{{ course['students'] }}" required>
+
+            <label for="lecturers">Lecturers Assigned:</label>
+            <input type="text" id="lecturers" name="lecturers" value="{{ course['lecturers'] }}" required>
+
+            <label for="status">Status:</label>
+            <select id="status" name="status">
+                <option value="Active" {% if course['status'] == 'Active' %} selected {% endif %}>Active</option>
+                <option value="Inactive" {% if course['status'] == 'Inactive' %} selected {% endif %}>Inactive</option>
+            </select>
+
+            <div class="btn-container">
+                <button type="submit" class="save-btn">💾 Save Changes</button>
+                <a href="{{ url_for('course_management') }}" class="cancel-btn">❌ Cancel</a>
+            </div>
+        </form>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Software Course</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='lecturer_navbar.css') }}">
+    <style>
+        .main-content {
+            padding: 20px;
+            margin-left: 200px; /* Adjust as needed to align with your sidebar */
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        p {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar_admin.html' %}
+
+    <div class="main-content">
+        <h1>💻 {{ course['name'] }}</h1>
+        <p><strong>Course Code:</strong> {{ course['code'] }}</p>
+        <p><strong>Students Enrolled:</strong> {{ course['students'] }}</p>
+        <p><strong>Lecturers Assigned:</strong> {{ course['lecturers'] }}</p>
+        <p><strong>Status:</strong> {{ course['status'] }}</p>
+
+        <a href="{{ url_for('course_management') }}">⬅ Back to Courses</a>
+    </div>
+</body>
+</html>

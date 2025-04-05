@@ -22,7 +22,8 @@ from io import BytesIO
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask import render_template
 import sqlite3  # ✅ Using SQLite for simplicity
-
+import sqlite3
+from flask import Flask, render_template, redirect, url_for, request, jsonify
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'supersecretkey'
@@ -227,8 +228,6 @@ def download_excel_student_attendance_insights():
 @login_required
 def download_csv_student_attendance_insights():
     return send_file("path/to/student_attendance_insights.csv", as_attachment=True)
-
-
 
 
 
@@ -1855,138 +1854,95 @@ def download_csv_course_registers():
 ## for admin course management
 
 
-# ✅ Initialize Database
-def init_db():
-    """ Initialize the database and create tables if they don't exist. """
-    conn = sqlite3.connect("courses.db")
-    cursor = conn.cursor()
+# ✅ Database Connection Function
+def get_db_connection():
+    conn = sqlite3.connect('courses.db')
+    conn.row_factory = sqlite3.Row
+    return conn
 
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS courses (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        description TEXT,
-        students_enrolled INTEGER DEFAULT 0,
-        lecturers_assigned INTEGER DEFAULT 0
-    )
+# ✅ Initialize Courses DB (optional safety)
+def init_courses_db():
+    conn = get_db_connection()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS courses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            code TEXT NOT NULL,
+            students INTEGER DEFAULT 0,
+            lecturers INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'Active',
+            attendance INTEGER DEFAULT 0,
+            average_grade INTEGER DEFAULT 0,
+            satisfaction REAL DEFAULT 0
+        )
     ''')
-
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS lecturers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        course_id INTEGER,
-        FOREIGN KEY (course_id) REFERENCES courses(id)
-    )
-    ''')
-
     conn.commit()
     conn.close()
 
-# ✅ Route to render the Course Management Page
+init_courses_db()
+
+# ✅ Route: Course Management Page
 @app.route('/course_management')
 def course_management():
-    """ Render the course management page. """
-    return render_template("course_management.html")
+    return render_template('course_management.html')
 
-# ✅ API: Fetch all courses
+# ✅ API: Fetch All Courses for Table
 @app.route('/api/courses', methods=['GET'])
 def get_courses():
-    """ Fetches courses from SQLite database. """
-    conn = sqlite3.connect("courses.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM courses")
-    courses = cursor.fetchall()
+    conn = get_db_connection()
+    courses = conn.execute('SELECT * FROM courses').fetchall()
     conn.close()
-    
-    # ✅ Convert to JSON format
-    courses_list = [
-        {"id": row[0], "name": row[1], "description": row[2], "students": row[3], "lecturers": row[4]}
-        for row in courses
-    ]
-    return jsonify(courses_list)
+    return jsonify([dict(course) for course in courses])
 
-# ✅ API: Add a new course
-@app.route('/api/courses', methods=['POST'])
-def add_course():
-    """ Adds a new course to the database. """
-    data = request.json
-    name = data.get("name")
-    description = data.get("description", "")
-
-    conn = sqlite3.connect("courses.db")
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO courses (name, description) VALUES (?, ?)", (name, description))
-    conn.commit()
+# ✅ Route: View Course Page
+@app.route('/course/<int:course_id>/view')
+def view_course(course_id):
+    conn = get_db_connection()
+    course = conn.execute('SELECT * FROM courses WHERE id = ?', (course_id,)).fetchone()
     conn.close()
 
-    return jsonify({"message": "Course added successfully"}), 201
+    if course:
+        return render_template('view_generic.html', course=dict(course))
+    return "Course Not Found", 404
 
-# ✅ API: Delete a course
+# ✅ Route: Edit Course Page (GET & POST)
+@app.route('/course/<int:course_id>/edit', methods=['GET', 'POST'])
+def edit_course(course_id):
+    conn = get_db_connection()
+
+    if request.method == 'POST':
+        name = request.form['name']
+        code = request.form['code']
+        students = request.form['students']
+        lecturers = request.form['lecturers']
+        status = request.form['status']
+
+        conn.execute('''
+            UPDATE courses
+            SET name = ?, code = ?, students = ?, lecturers = ?, status = ?
+            WHERE id = ?
+        ''', (name, code, students, lecturers, status, course_id))
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for('course_management'))
+
+    # GET method: show form
+    course = conn.execute('SELECT * FROM courses WHERE id = ?', (course_id,)).fetchone()
+    conn.close()
+
+    if course:
+        return render_template('edit_generic.html', course=dict(course))
+    return "Course Not Found", 404
+
+# ✅ Delete Course
 @app.route('/api/courses/<int:course_id>', methods=['DELETE'])
 def delete_course(course_id):
-    """ Deletes a course from the database. """
-    conn = sqlite3.connect("courses.db")
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM courses WHERE id=?", (course_id,))
+    conn = get_db_connection()
+    conn.execute('DELETE FROM courses WHERE id = ?', (course_id,))
     conn.commit()
     conn.close()
-    return jsonify({"message": "Course deleted successfully"}), 200
-
-# ✅ Initialize DB
-init_db()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    return jsonify({'success': True})
 
 
 
