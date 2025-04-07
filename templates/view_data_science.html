@@ -1,36 +1,127 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>View Data Science Course</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='lecturer_navbar.css') }}">
-    <style>
-        .main-content {
-            padding: 20px;
-            margin-left: 200px; /* Adjust as needed to align with your sidebar */
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
-        }
-        p {
-            margin: 10px 0;
-            font-size: 16px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>View Data Science Course</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='lecturer_navbar.css') }}" />
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background-color: #f4f6f8;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .main-content {
+      margin-left: 250px;
+      padding: 20px;
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    p {
+      margin: 10px 0;
+      font-size: 16px;
+      text-align: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 14px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #3498db;
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 20px;
+      color: #3498db;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
-    {% include 'navbar_admin.html' %}
 
-    <div class="main-content">
-        <h1>📊 {{ course['name'] }}</h1>
-        <p><strong>Course Code:</strong> {{ course['code'] }}</p>
-        <p><strong>Students Enrolled:</strong> {{ course['students'] }}</p>
-        <p><strong>Lecturers Assigned:</strong> {{ course['lecturers'] }}</p>
-        <p><strong>Status:</strong> {{ course['status'] }}</p>
+  {% include 'navbar_admin.html' %}
 
-        <a href="{{ url_for('course_management') }}">⬅ Back to Courses</a>
+  <div class="main-content">
+    <div class="container">
+      <a href="{{ url_for('course_management') }}" class="back-link">⬅ Back to Courses</a>
+
+      <h1>📊 {{ course['name'] }}</h1>
+
+      <p><strong>Course Code:</strong> {{ course['code'] }}</p>
+      <p><strong>Students Enrolled:</strong> {{ course['students'] }}</p>
+      <p><strong>Lecturers Assigned:</strong> {{ course['lecturers'] }}</p>
+      <p><strong>Status:</strong> {{ course['status'] }}</p>
+
+      <h2 style="margin-top: 40px; text-align: center;">👥 People Enrolled</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>UNI ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Join Date</th>
+            <th>Enrollment Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+          <tr>
+            <td>{{ user['id'] }}</td>
+            <td>{{ user['username'] }}</td>
+            <td>{{ user['email'] }}</td>
+            <td>{{ user['role'] }}</td>
+            <td>{{ user['join_date'] }}</td>
+            <td>Active</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
     </div>
+  </div>
 </body>
 </html>

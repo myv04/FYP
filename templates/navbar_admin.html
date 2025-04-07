@@ -1,29 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Portal</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='admin_navbar.css') }}">
-    <script defer src="{{ url_for('static', filename='navbar.js') }}"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin_navbar.css') }}">
+  <script defer src="{{ url_for('static', filename='navbar.js') }}"></script>
 </head>
-<body class="navbar">
-    <div class="sidebar">
-        <h2 class="logo">Admin Portal</h2>
-        <nav>
-            <a href="{{ url_for('home_admin') }}">Home</a>
-            <a href="#">Name</a>
-            <a href="{{ url_for('course_management') }}"> Course Management</a>  <!-- ✅ Added Course Management -->
-            <a href="#">Students</a>
-            <a href="#">Lecturers</a>
-            <a href="#">Settings</a>
-            <a href="#">Export</a>
-            <a href="{{ url_for('logout') }}">Logout</a>
-        </nav>
-    </div>
+<body>
+  <div class="sidebar">
+    <h2 class="logo">Admin Portal</h2>
+    <nav>
+      <a href="{{ url_for('home_admin') }}">Home</a>
+      <a href="#">Name</a>
+      <a href="{{ url_for('course_management') }}">Course Management</a>
+      <a href="#">Students</a>
+      <a href="#">Lecturers</a>
+      <a href="#">Settings</a>
+      <a href="#">Export</a>
+      <a href="{{ url_for('logout') }}">Logout</a>
+    </nav>
+  </div>
 
-    <div class="main-content">
-        <!-- Your main content goes here -->
-    </div>
+  <!-- Main Content Area for Child Templates -->
+  <div class="main-content">
+    {% block content %}{% endblock %}
+  </div>
 </body>
 </html>
