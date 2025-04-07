@@ -1855,129 +1855,11 @@ def download_csv_course_registers():
     )
 
 ## for admin course management
-fake = Faker()
-
-# ✅ In-memory static cache for users by course
-static_course_users = {}
-
 # ✅ Database Connection Function
 def get_db_connection():
     conn = sqlite3.connect('courses.db')
     conn.row_factory = sqlite3.Row
     return conn
-
-# ✅ Initialize Courses Database with Sample Data
-def init_courses_db():
-    conn = get_db_connection()
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS courses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            code TEXT NOT NULL,
-            students INTEGER DEFAULT 0,
-            lecturers INTEGER DEFAULT 0,
-            status TEXT DEFAULT 'Active'
-        )
-    ''')
-    course_count = conn.execute('SELECT COUNT(*) FROM courses').fetchone()[0]
-    if course_count == 0:
-        conn.execute('''
-            INSERT INTO courses (name, code, students, lecturers, status)
-            VALUES 
-            ('BSc Software Engineering', 'SE101', 500, 30, 'Active'),
-            ('BSc Data Science', 'DS102', 450, 25, 'Active')
-        ''')
-        print("✅ Sample courses added to database ✅")
-    conn.commit()
-    conn.close()
-
-# ✅ Call initializer at startup
-init_courses_db()
-
-# ✅ Generate random join date
-def random_join_date():
-    return (datetime.now() - timedelta(days=random.randint(1, 365))).strftime('%Y-%m-%d')
-
-# ✅ Generate Unique ID Generator
-def generate_unique_id(prefix, existing_ids):
-    while True:
-        new_id = f"{prefix}{random.randint(1000, 9999)}"
-        if new_id not in existing_ids:
-            existing_ids.add(new_id)
-            return new_id
-
-# ✅ Random user generator
-def generate_static_users(course_code, total_students, total_lecturers):
-    users = []
-    existing_ids = set()
-    prefix = course_code[:2].upper()
-
-    # Students
-    for _ in range(total_students):
-        users.append({
-            'id': generate_unique_id(prefix, existing_ids),
-            'username': fake.name(),
-            'email': fake.email(),
-            'role': 'Student',
-            'course': course_code,
-            'join_date': random_join_date(),
-            'enrollment_status': 'Active'
-        })
-
-    # Lecturers
-    for _ in range(total_lecturers):
-        users.append({
-            'id': generate_unique_id(prefix, existing_ids),
-            'username': fake.name(),
-            'email': fake.email(),
-            'role': 'Lecturer',
-            'course': course_code,
-            'join_date': random_join_date(),
-            'enrollment_status': 'Active'
-        })
-
-    # Admins (between 3–5)
-    for _ in range(random.randint(3, 5)):
-        users.append({
-            'id': generate_unique_id(prefix, existing_ids),
-            'username': fake.name(),
-            'email': fake.email(),
-            'role': 'Admin',
-            'course': course_code,
-            'join_date': random_join_date(),
-            'enrollment_status': 'Active'
-        })
-
-    # Teacher Assistants (between 5–10)
-    for _ in range(random.randint(5, 10)):
-        users.append({
-            'id': generate_unique_id(prefix, existing_ids),
-            'username': fake.name(),
-            'email': fake.email(),
-            'role': 'Teacher Assistant',
-            'course': course_code,
-            'join_date': random_join_date(),
-            'enrollment_status': 'Active'
-        })
-
-    return users
-
-# ✅ Pre-generate static users at startup
-def generate_all_static_users():
-    conn = get_db_connection()
-    courses = conn.execute('SELECT * FROM courses').fetchall()
-    conn.close()
-
-    for course in courses:
-        course_dict = dict(course)
-        static_course_users[course_dict["id"]] = generate_static_users(
-            course_code=course_dict['code'],
-            total_students=course_dict['students'],
-            total_lecturers=course_dict['lecturers']
-        )
-    print("✅ Static users generated for all courses ✅")
-
-generate_all_static_users()
 
 # ✅ API: Fetch All Courses
 @app.route('/api/courses', methods=['GET'])
@@ -1992,19 +1874,50 @@ def get_courses():
 def course_management():
     return render_template('course_management.html')
 
-# ✅ Route: View Course Page
+# ✅ API: Fetch all students in a course (this replaces your static users!)
+@app.route('/api/course/<int:course_id>/students', methods=['GET'])
+def get_course_students(course_id):
+    conn = get_db_connection()
+    students = conn.execute('''
+        SELECT s.* FROM students s
+        JOIN enrollments e ON s.id = e.student_id
+        WHERE e.course_id = ?
+    ''', (course_id,)).fetchall()
+    conn.close()
+    return jsonify([dict(student) for student in students])
+
+# ✅ Route: View Course Page (dynamic template selection)
 @app.route('/course/<int:course_id>/view')
 def view_course(course_id):
     conn = get_db_connection()
-    course = conn.execute('SELECT * FROM courses WHERE id = ?', (course_id,)).fetchone()
-    conn.close()
 
+    # Fetch course details
+    course = conn.execute('SELECT * FROM courses WHERE id = ?', (course_id,)).fetchone()
     if not course:
+        conn.close()
         return "Course Not Found", 404
 
-    course = dict(course)
-    users_in_course = sorted(static_course_users.get(course_id, []), key=lambda x: x['join_date'], reverse=True)
+    # Fetch enrolled users and sort by role
+    users_in_course = conn.execute('''
+        SELECT s.* FROM students s
+        JOIN enrollments e ON s.id = e.student_id
+        WHERE e.course_id = ?
+        ORDER BY 
+            CASE s.role
+                WHEN 'Student' THEN 1
+                WHEN 'Lecturer' THEN 2
+                WHEN 'Teacher Assistant' THEN 3
+                WHEN 'Admin' THEN 4
+                ELSE 5
+            END,
+            s.join_date DESC
+    ''', (course_id,)).fetchall()
+    conn.close()
 
+    course = dict(course)
+    users = [dict(user) for user in users_in_course]
+
+    # Template selection
     if "Software" in course["name"]:
         template = 'view_software.html'
     elif "Data Science" in course["name"]:
@@ -2012,12 +1925,13 @@ def view_course(course_id):
     else:
         template = 'view_generic.html'
 
-    return render_template(template, course=course, users=users_in_course)
+    return render_template(template, course=course, users=users)
 
-# ✅ Route: Edit Course Page
+# ✅ Route: Edit Course Page (no change needed, database-powered)
 @app.route('/course/<int:course_id>/edit', methods=['GET', 'POST'])
 def edit_course(course_id):
     conn = get_db_connection()
+
     if request.method == 'POST':
         name = request.form['name']
         code = request.form['code']
@@ -2043,10 +1957,6 @@ def edit_course(course_id):
         return render_template('edit_generic.html', course=dict(course))
 
     return "Course Not Found", 404
-
-
-
-
 
 
 
