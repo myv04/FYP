@@ -1855,13 +1855,17 @@ def download_csv_course_registers():
     )
 
 ## for admin course management
-# ✅ Database Connection Function
+# ====================
+# Database Connection
+# ====================
 def get_db_connection():
     conn = sqlite3.connect('courses.db')
     conn.row_factory = sqlite3.Row
     return conn
 
-# ✅ API: Fetch All Courses
+# ====================
+# API: Fetch All Courses
+# ====================
 @app.route('/api/courses', methods=['GET'])
 def get_courses():
     conn = get_db_connection()
@@ -1869,12 +1873,16 @@ def get_courses():
     conn.close()
     return jsonify([dict(course) for course in courses])
 
-# ✅ Route: Course Management Page
+# ====================
+# Route: Course Management Page
+# ====================
 @app.route('/course_management')
 def course_management():
     return render_template('course_management.html')
 
-# ✅ API: Fetch all students in a course (this replaces your static users!)
+# ====================
+# API: Fetch all students in a course
+# ====================
 @app.route('/api/course/<int:course_id>/students', methods=['GET'])
 def get_course_students(course_id):
     conn = get_db_connection()
@@ -1886,7 +1894,9 @@ def get_course_students(course_id):
     conn.close()
     return jsonify([dict(student) for student in students])
 
-# ✅ Route: View Course Page (dynamic template selection)
+# ====================
+# Route: View Course Page (students with 'Removed' status hidden)
+# ====================
 @app.route('/course/<int:course_id>/view')
 def view_course(course_id):
     conn = get_db_connection()
@@ -1897,11 +1907,11 @@ def view_course(course_id):
         conn.close()
         return "Course Not Found", 404
 
-    # Fetch enrolled users and sort by role
+    # Fetch active enrolled users
     users_in_course = conn.execute('''
         SELECT s.* FROM students s
         JOIN enrollments e ON s.id = e.student_id
-        WHERE e.course_id = ?
+        WHERE e.course_id = ? AND s.enrollment_status != 'Removed'
         ORDER BY 
             CASE s.role
                 WHEN 'Student' THEN 1
@@ -1912,12 +1922,13 @@ def view_course(course_id):
             END,
             s.join_date DESC
     ''', (course_id,)).fetchall()
+
     conn.close()
 
     course = dict(course)
     users = [dict(user) for user in users_in_course]
 
-    # Template selection
+    # Template selection based on course name
     if "Software" in course["name"]:
         template = 'view_software.html'
     elif "Data Science" in course["name"]:
@@ -1927,7 +1938,9 @@ def view_course(course_id):
 
     return render_template(template, course=course, users=users)
 
-# ✅ Route: Edit Course Page (no change needed, database-powered)
+# ====================
+# Route: Edit Course Page (Admin view)
+# ====================
 @app.route('/course/<int:course_id>/edit', methods=['GET', 'POST'])
 def edit_course(course_id):
     conn = get_db_connection()
@@ -1947,24 +1960,116 @@ def edit_course(course_id):
         conn.commit()
         conn.close()
 
-        print(f"✅ Course updated: {name}, {code}, {students}, {lecturers}, {status}")
-        return redirect(url_for('course_management'))
+        return redirect(url_for('edit_course', course_id=course_id, success='Course updated successfully!'))
 
+    # Fetch course and all users (including 'Removed' for admin control)
     course = conn.execute('SELECT * FROM courses WHERE id = ?', (course_id,)).fetchone()
+
+    users_in_course = conn.execute('''
+        SELECT s.* FROM students s
+        JOIN enrollments e ON s.id = e.student_id
+        WHERE e.course_id = ?
+        ORDER BY 
+            CASE s.role
+                WHEN 'Student' THEN 1
+                WHEN 'Lecturer' THEN 2
+                WHEN 'Teacher Assistant' THEN 3
+                WHEN 'Admin' THEN 4
+                ELSE 5
+            END,
+            s.join_date DESC
+    ''', (course_id,)).fetchall()
+
     conn.close()
 
-    if course:
-        return render_template('edit_generic.html', course=dict(course))
+    if not course:
+        return "Course Not Found", 404
 
-    return "Course Not Found", 404
+    course = dict(course)
+    users = [dict(user) for user in users_in_course]
 
+    if "Software" in course["name"]:
+        template = 'edit_software.html'
+    elif "Data Science" in course["name"]:
+        template = 'edit_data_science.html'
+    else:
+        template = 'edit_generic.html'
 
+    return render_template(template, course=course, users=users, success=request.args.get('success'))
 
+# ====================
+# Route: Add New User to Course
+# ====================
+@app.route('/course/<int:course_id>/add_user', methods=['POST'])
+def add_user(course_id):
+    name = request.form['name']
+    role = request.form['role']
+    enrollment_status = request.form['enrollment_status']
+    course_name = request.form['course_name']
+    join_date = datetime.now().strftime('%Y-%m-%d')
 
+    initials = ''.join([part[0] for part in name.split()]).upper()
+    random_number = random.randint(100000, 999999)
 
+    if role == 'Student':
+        uni_id = f"SE{random_number}" if "Software" in course_name else f"DS{random_number}"
+        email = f"{initials}{uni_id}@uni.com"
+    else:
+        uni_id = str(random_number)
+        email = f"{name.replace(' ', '').lower()}@uni.com"
 
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
+    cursor.execute('''
+        INSERT INTO students (uni_id, username, email, role, join_date, enrollment_status)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (uni_id, name, email, role, join_date, enrollment_status))
 
+    student_id = cursor.lastrowid
+
+    cursor.execute('''
+        INSERT INTO enrollments (student_id, course_id)
+        VALUES (?, ?)
+    ''', (student_id, course_id))
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for('edit_course', course_id=course_id, success='Person added successfully!'))
+
+# ====================
+# Route: Archive (Soft Delete) User
+# ====================
+@app.route('/course/<int:course_id>/delete_user/<int:user_id>', methods=['POST'])
+def delete_user(course_id, user_id):
+    conn = get_db_connection()
+    conn.execute('''
+        UPDATE students
+        SET enrollment_status = 'Removed'
+        WHERE id = ?
+    ''', (user_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('edit_course', course_id=course_id, success='User archived successfully!'))
+
+# ====================
+# Route: Restore Archived User
+# ====================
+@app.route('/course/<int:course_id>/restore_user/<int:user_id>', methods=['POST'])
+def restore_user(course_id, user_id):
+    original_status = request.form.get('original_status', 'Active')
+
+    conn = get_db_connection()
+    conn.execute('''
+        UPDATE students
+        SET enrollment_status = ?
+        WHERE id = ?
+    ''', (original_status, user_id))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for('edit_course', course_id=course_id, success='User restored successfully!'))
 
 
 

@@ -5,15 +5,24 @@ import random
 
 fake = Faker()
 
+# ✅ Track used IDs to ensure uniqueness
+existing_staff_ids = set()
+existing_student_ids = set()
+
 # Helpers
 def generate_student_uni_id(prefix):
-    return f"{prefix}{random.randint(100000, 999999)}"
-
-def generate_staff_uni_id(existing_ids):
     while True:
         number = random.randint(100000, 999999)
-        if number not in existing_ids:
-            existing_ids.add(number)
+        uni_id = f"{prefix}{number}"
+        if uni_id not in existing_student_ids:
+            existing_student_ids.add(uni_id)
+            return uni_id
+
+def generate_staff_uni_id():
+    while True:
+        number = random.randint(100000, 999999)
+        if number not in existing_staff_ids:
+            existing_staff_ids.add(number)
             return str(number)
 
 def generate_student_email(name, uni_id):
@@ -22,6 +31,13 @@ def generate_student_email(name, uni_id):
 
 def generate_staff_email(name):
     return f"{name.replace(' ', '')}@uni.com"
+
+# ✅ New function for enrollment status based on role
+def get_enrollment_status(role):
+    if role == 'Student':
+        return random.choice(['Enrolled', 'Deferred'])
+    else:
+        return 'Active'
 
 # Connect to DB
 conn = sqlite3.connect('courses.db')
@@ -47,7 +63,6 @@ course_map = {code: id for (id, code) in c.fetchall()}
 
 students = []
 enrollments = []
-existing_staff_ids = set()
 
 # Settings
 course_settings = {
@@ -56,7 +71,6 @@ course_settings = {
 }
 
 join_date = datetime.now().strftime('%Y-%m-%d')
-enrollment_status = 'Active'
 
 for course_code, settings in course_settings.items():
     prefix = settings['prefix']
@@ -67,27 +81,31 @@ for course_code, settings in course_settings.items():
         name = fake.name()
         uni_id = generate_student_uni_id(prefix)
         email = generate_student_email(name, uni_id)
+        enrollment_status = get_enrollment_status('Student')
         students.append((uni_id, name, email, 'Student', join_date, enrollment_status))
-    
+
     # 2. Lecturers
     for _ in range(settings['lecturers']):
         name = fake.name()
-        uni_id = generate_staff_uni_id(existing_staff_ids)
+        uni_id = generate_staff_uni_id()
         email = generate_staff_email(name)
+        enrollment_status = get_enrollment_status('Lecturer')
         students.append((uni_id, name, email, 'Lecturer', join_date, enrollment_status))
-    
+
     # 3. Admins
     for _ in range(settings['admins']):
         name = fake.name()
-        uni_id = generate_staff_uni_id(existing_staff_ids)
+        uni_id = generate_staff_uni_id()
         email = generate_staff_email(name)
+        enrollment_status = get_enrollment_status('Admin')
         students.append((uni_id, name, email, 'Admin', join_date, enrollment_status))
-    
+
     # 4. Teacher Assistants
     for _ in range(settings['tas']):
         name = fake.name()
-        uni_id = generate_staff_uni_id(existing_staff_ids)
+        uni_id = generate_staff_uni_id()
         email = generate_staff_email(name)
+        enrollment_status = get_enrollment_status('Teacher Assistant')
         students.append((uni_id, name, email, 'Teacher Assistant', join_date, enrollment_status))
 
 # Step 4: Insert students
@@ -131,4 +149,5 @@ for course_code, settings in course_settings.items():
 conn.commit()
 conn.close()
 
-print("✅ Data seeded successfully with perfect format for UNI ID and emails!")
+print("✅ Data seeded successfully with random enrollment status for students (Enrolled or Deferred)!")
+print("✅ Unique UNI IDs generated successfully for all users!")
