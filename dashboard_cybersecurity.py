@@ -2,6 +2,28 @@ import dash
 from dash import dcc, html, dash_table
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
+import sqlite3
+import json
+
+# ✅ Database Saving Logic (only runs once)
+def save_module_data(module_code, module_name, attendance, grade, assignments, exams, deadlines):
+    conn = sqlite3.connect("student_performance.db")
+    c = conn.cursor()
+    c.execute('''
+        INSERT OR REPLACE INTO student_modules
+        (module_code, module_name, attendance, grade, assignments_json, exams_json, deadlines_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        module_code,
+        module_name,
+        attendance,
+        grade,
+        json.dumps(assignments),
+        json.dumps(exams),
+        json.dumps(deadlines)
+    ))
+    conn.commit()
+    conn.close()
 
 # Create Dash app
 dash_cybersecurity = dash.Dash(
@@ -10,31 +32,41 @@ dash_cybersecurity = dash.Dash(
     suppress_callback_exceptions=True
 )
 
-# Sample Data
+# Original Static Data
 average_attendance = 78
 remaining_attendance = 100 - average_attendance
 
-# Assignments Data
 assignments = [
     {"name": "Network Security Protocols", "score": 95, "weight": 40, "status": "Completed"},
     {"name": "Ethical Hacking Fundamentals", "score": 88, "weight": 35, "status": "Completed"},
     {"name": "Malware Analysis", "score": None, "weight": 25, "status": "Not Started"},
 ]
 
-# Calculate Current Grade
+# Grade Calculation
 total_weighted_score = sum((a["score"] / 100) * a["weight"] for a in assignments if a["score"] is not None)
 current_grade = total_weighted_score
 
-# Generate Deadlines for Ongoing Assignments (British Date Format + TBC for "Not Started")
+# Generate Deadlines
 current_date = datetime.now()
 deadline_data = []
 for assignment in assignments:
-    if assignment["status"] != "Completed":  # Exclude completed assignments
+    if assignment["status"] != "Completed":
         deadline_data.append({
             "Assignment": assignment["name"],
             "Deadline": "TBC" if assignment["status"] == "Not Started" else (current_date + timedelta(days=7)).strftime('%d/%m/%Y'),
             "Days Left": "TBC" if assignment["status"] == "Not Started" else (current_date + timedelta(days=7) - current_date).days
         })
+
+# ✅ Save to DB
+save_module_data(
+    module_code="CS205",
+    module_name="Cybersecurity",
+    attendance=average_attendance,
+    grade=current_grade,
+    assignments=[{k: a[k] for k in ["name", "score", "status"]} for a in assignments],
+    exams=[],
+    deadlines=deadline_data
+)
 
 # Donut Chart (Attendance)
 attendance_chart = go.Figure(
@@ -65,7 +97,6 @@ status_categories = ["Not Started", "Not Completed", "Completed"]
 status_colors = {"Not Started": "#e74c3c", "Not Completed": "#f1c40f", "Completed": "#2ecc71"}
 
 status_chart = go.Figure()
-
 for status in status_categories:
     status_chart.add_trace(go.Bar(
         x=["Cybersecurity"] * len([a for a in assignments if a["status"] == status]),
@@ -85,20 +116,18 @@ status_chart.update_layout(
     legend=dict(itemclick="toggle", itemdoubleclick="toggleothers")
 )
 
-# Dashboard Layout
+# Layout
 dash_cybersecurity.layout = html.Div(style={
     'fontFamily': 'Arial, sans-serif',
     'backgroundColor': '#f8f9fa',
     'padding': '30px'
 }, children=[
-
     html.H2("Cybersecurity Dashboard", style={
-        'textAlign': 'center', 
-        'color': '#34495e', 
+        'textAlign': 'center',
+        'color': '#34495e',
         'marginBottom': '30px'
     }),
 
-    # First Row: Attendance & Assignment Scores Charts
     html.Div(style={
         'display': 'grid',
         'gridTemplateColumns': '1fr 1fr',
@@ -120,7 +149,6 @@ dash_cybersecurity.layout = html.Div(style={
         })
     ]),
 
-    # Current Grade (Positioned like AI)
     html.Div(style={
         'display': 'flex',
         'justifyContent': 'center',
@@ -149,7 +177,6 @@ dash_cybersecurity.layout = html.Div(style={
         ])
     ]),
 
-    # Assignment Status Chart
     html.Div(dcc.Graph(figure=status_chart), style={
         'backgroundColor': 'white',
         'borderRadius': '10px',
@@ -158,7 +185,6 @@ dash_cybersecurity.layout = html.Div(style={
         'boxShadow': '0 4px 8px rgba(0, 0, 0, 0.1)'
     }),
 
-    # Assignment Deadlines Table (Only "Not Started" & "Not Completed" Assignments)
     html.Div(style={
         'display': 'flex',
         'justifyContent': 'center',
@@ -177,7 +203,7 @@ dash_cybersecurity.layout = html.Div(style={
                 columns=[
                     {"name": "Assignment", "id": "Assignment"},
                     {"name": "Deadline (DD/MM/YYYY)", "id": "Deadline"},
-                    {"name": "Days Left", "id": "Days Left"}  # Countdown Days
+                    {"name": "Days Left", "id": "Days Left"}
                 ],
                 data=deadline_data,
                 style_table={'margin': 'auto', 'width': '100%'},
@@ -188,6 +214,6 @@ dash_cybersecurity.layout = html.Div(style={
     ])
 ])
 
-# Function to integrate with Flask
+# Flask Integration
 def init_dashboard(server):
     dash_cybersecurity.init_app(server)

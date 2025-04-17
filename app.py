@@ -26,6 +26,10 @@ import sqlite3
 from flask import Flask, render_template, redirect, url_for, request, jsonify
 from faker import Faker
 from datetime import datetime, timedelta
+from report_data_loader import fetch_module_data
+import csv
+from student_data_loader import fetch_student_dashboard
+
 
 
 app = Flask(__name__)
@@ -143,9 +147,6 @@ def data_science_dashboard_page():
 def course_registers_page():
     return render_template('course_registers.html')
 
-
-
-
 @app.route('/lecturer_profile')
 @login_required
 def lecturer_profile():
@@ -232,36 +233,6 @@ def download_excel_student_attendance_insights():
 def download_csv_student_attendance_insights():
     return send_file("path/to/student_attendance_insights.csv", as_attachment=True)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def export_file(df, filename, file_type="excel"):
     if file_type == "excel":
         file_path = f"{filename}.xlsx"
@@ -272,557 +243,196 @@ def export_file(df, filename, file_type="excel"):
 
     return send_file(file_path, as_attachment=True)
 
-# ✅ Export Attendance Report
-@app.route('/download_excel_attendance')
-@login_required
-def download_excel_attendance():
-    data = {
-        "Module": ["Data Structures", "Web Development", "AI", "Databases", "Cybersecurity"],
-        "Attendance (%)": [75, 80, 85, 70, 65]
-    }
-    df = pd.DataFrame(data)
-    return export_file(df, "attendance_report", "excel")
 
-@app.route('/download_csv_attendance')
-@login_required
-def download_csv_attendance():
-    data = {
-        "Module": ["Data Structures", "Web Development", "AI", "Databases", "Cybersecurity"],
-        "Attendance (%)": [75, 80, 85, 70, 65]
-    }
-    df = pd.DataFrame(data)
-    return export_file(df, "attendance_report", "csv")
+# EXPORT for STUDENT-SIDE MODULES #
+def generate_module_report_from_dict(module_data, file_type):
+    # Create clean filename based on module name
+    safe_name = module_data['module_name'].replace(" ", "_")  # You can also use .replace(" ", "") if preferred
+    file_path = f"{safe_name}_Report.{file_type}"
+    metrics = module_data["metrics"]
+    assignments = module_data["assignments"]
 
-# Function to extract AI report data
-def get_ai_data(file_type="excel"):
-    file_path = f"ai_performance_report.{file_type}"
-
-    # ✅ Updated Data
-    module_title = ["MODULE: Artificial Intelligence"]
-    module_code = ["Module Code: CS203"]
-
-    average_attendance = 75
-    completed_assignments = 1
-    pending_assignments = 2
-    current_grade = 25.50  # ✅ New addition
-
-    metrics = [
-        ["Average Attendance", average_attendance],
-        ["Completed Assignments", completed_assignments],
-        ["Pending Assignments", pending_assignments],
-        ["Current Grade (%)", current_grade]  # ✅ Added Current Grade
-    ]
-
-    assignments = [
-        ["ASSIGNMENT", "SCORE %"],  # ✅ Table Header
-        ["Neural Network Implementation", 85],
-        ["Ethical Concerns in AI Development", None],  # No score yet
-        ["Sentiment Analysis using NLP", None]  # Not started
-    ]
-
-    # ✅ Excel Report Generation
     if file_type == "xlsx":
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "AI Report"
-
-        # ✅ Column Widths
+        ws.title = module_data['module_name']
         ws.column_dimensions["A"].width = 40
         ws.column_dimensions["B"].width = 20
 
-        # ✅ Merged Header for Module Title
         ws.merge_cells("A1:B1")
-        ws["A1"] = module_title[0]
+        ws["A1"] = f"MODULE: {module_data['module_name']}"
         ws["A1"].font = Font(bold=True)
         ws["A1"].alignment = Alignment(horizontal="center")
 
         ws.merge_cells("A2:B2")
-        ws["A2"] = module_code[0]
+        ws["A2"] = f"Module Code: {module_data['module_code']}"
         ws["A2"].alignment = Alignment(horizontal="center")
 
-        # ✅ Attendance & Assignment Metrics (Bordered Table)
-        start_row = 4
-        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'),
-                             top=Side(style='thin'), bottom=Side(style='thin'))
-        for i, (metric, value) in enumerate(metrics):
-            ws[f"A{start_row + i}"] = metric
-            ws[f"B{start_row + i}"] = value
-            ws[f"A{start_row + i}"].border = thin_border
-            ws[f"B{start_row + i}"].border = thin_border
-
-        # ✅ Assignment Scores Table
-        ws["A8"] = "ASSIGNMENT"
-        ws["B8"] = "SCORE %"
-        ws["A8"].font = Font(bold=True)
-        ws["B8"].font = Font(bold=True)
-
-        start_row = 9
-        for i, (assignment, score) in enumerate(assignments[1:]):
-            ws[f"A{start_row + i}"] = assignment
-            ws[f"B{start_row + i}"] = score if score is not None else ""
-
-        # ✅ Add Excel Table with Filters
-        table = Table(displayName="AssignmentScores", ref=f"A8:B{start_row + len(assignments) - 2}")
-        style = TableStyleInfo(
-            name="TableStyleMedium9", showFirstColumn=False, showLastColumn=False,
-            showRowStripes=True, showColumnStripes=False
+        thin_border = Border(
+            left=Side(style='thin'), right=Side(style='thin'),
+            top=Side(style='thin'), bottom=Side(style='thin')
         )
-        table.tableStyleInfo = style
-        ws.add_table(table)
 
-        # ✅ Save File
-        wb.save(file_path)
-        return file_path
-
-    # ✅ CSV Report Generation (Fixed to match old working version)
-    elif file_type == "csv":
-        with open(file_path, "w") as f:
-            # ✅ Module Header
-            f.write("MODULE: Artificial Intelligence\n")
-            f.write("Module Code: CS203\n\n")
-
-            # ✅ Metrics Table
-            f.write("Metric,Value\n")
-            for metric, value in metrics:
-                f.write(f"{metric},{value}\n")
-
-            f.write("\n")  # Space between tables
-
-            # ✅ Assignment Table
-            f.write("ASSIGNMENT,SCORE %\n")
-            for assignment, score in assignments[1:]:
-                f.write(f"{assignment},{score if score is not None else ''}\n")
-
-        return file_path
-
-# ✅ Routes for Downloading AI Report
-@app.route('/download_excel_ai')
-@login_required
-def download_excel_ai():
-    file_path = get_ai_data("xlsx")
-    return send_file(file_path, as_attachment=True, download_name="AI_Report.xlsx")
-
-@app.route('/download_csv_ai')
-@login_required
-def download_csv_ai():
-    file_path = get_ai_data("csv")
-    return send_file(file_path, as_attachment=True, download_name="AI_Report.csv")
-
-# ✅ Export Web Development Report (Updated)
-def get_webdev_data(file_type="excel"):
-    file_path = f"webdev_performance_report.{file_type}"
-
-    # ✅ Updated Data from New Web Dev Dashboard
-    module_title = ["MODULE: Web Development"]
-    module_code = ["Module Code: CS202"]
-
-    # ✅ New Attendance & Assignment Metrics
-    metrics = [
-        ["Average Attendance", 80],
-        ["Remaining Attendance", 20],  # New metric
-        ["Completed Assignments", 1],  # Only 1 completed
-        ["Pending Assignments", 0],  # No pending assignments
-        ["Current Grade (%)", 79.0]  # New addition
-    ]
-
-    # ✅ New Assignment & Exam Scores (Matches Dashboard)
-    assignments = [
-        ["ASSESSMENT", "SCORE %"],  # Table Header
-        ["Final Web Development Exam", 76],  # Updated Exam
-        ["Responsive Design Project", 82]  # Updated Assignment
-    ]
-
-    # ✅ Excel Report Generation
-    if file_type == "xlsx":
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Web Dev Report"
-
-        # ✅ Column Widths for Better Readability
-        ws.column_dimensions["A"].width = 35
-        ws.column_dimensions["B"].width = 15
-
-        # ✅ 1. Merged Header for Module Title
-        ws.merge_cells("A1:B1")
-        ws["A1"] = module_title[0]
-        ws["A1"].font = Font(bold=True)
-        ws["A1"].alignment = Alignment(horizontal="center")
-
-        ws.merge_cells("A2:B2")
-        ws["A2"] = module_code[0]
-        ws["A2"].alignment = Alignment(horizontal="center")
-
-        # ✅ 2. Attendance & Assignment Metrics Table
-        start_row = 4
-        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'),
-                             top=Side(style='thin'), bottom=Side(style='thin'))
         for i, (metric, value) in enumerate(metrics):
-            ws[f"A{start_row + i}"] = metric
-            ws[f"B{start_row + i}"] = value
-            ws[f"A{start_row + i}"].border = thin_border
-            ws[f"B{start_row + i}"].border = thin_border
+            ws[f"A{4 + i}"] = metric
+            ws[f"B{4 + i}"] = value
+            ws[f"A{4 + i}"].border = thin_border
+            ws[f"B{4 + i}"].border = thin_border
 
-        # ✅ 3. Assignment & Exam Scores Table
-        ws["A10"] = "ASSESSMENT"
-        ws["B10"] = "SCORE %"
-        ws["A10"].font = Font(bold=True)
-        ws["B10"].font = Font(bold=True)
-
-        start_row = 11
-        for i, (assessment, score) in enumerate(assignments[1:]):
-            ws[f"A{start_row + i}"] = assessment
-            ws[f"B{start_row + i}"] = score
-
-        # ✅ Add Excel Table with Filters
-        table = Table(displayName="WebDevScores", ref=f"A10:B{start_row + len(assignments) - 2}")
-        style = TableStyleInfo(
-            name="TableStyleMedium9", showFirstColumn=False, showLastColumn=False,
-            showRowStripes=True, showColumnStripes=False
-        )
-        table.tableStyleInfo = style
-        ws.add_table(table)
-
-        # ✅ Save File
-        wb.save(file_path)
-        return file_path
-
-    # ✅ CSV Report Generation (Updated Structure)
-    elif file_type == "csv":
-        with open(file_path, "w") as f:
-            # ✅ Module Header
-            f.write("MODULE: Web Development\n")
-            f.write("Module Code: CS202\n\n")
-
-            # ✅ Metrics Table
-            f.write("Metric,Value\n")
-            for metric, value in metrics:
-                f.write(f"{metric},{value}\n")
-
-            f.write("\n")  # Space between tables
-
-            # ✅ Assignment & Exam Table
-            f.write("ASSESSMENT,SCORE %\n")
-            for assessment, score in assignments[1:]:
-                f.write(f"{assessment},{score}\n")
-
-        return file_path
-
-# ✅ Routes for Downloading Updated Web Development Report
-@app.route('/download_excel_webdev')
-@login_required
-def download_excel_webdev():
-    file_path = get_webdev_data("xlsx")
-    return send_file(file_path, as_attachment=True, download_name="WebDev_Report.xlsx")
-
-@app.route('/download_csv_webdev')
-@login_required
-def download_csv_webdev():
-    file_path = get_webdev_data("csv")
-    return send_file(file_path, as_attachment=True, download_name="WebDev_Report.csv")
-
-# Function to extract Database Management report data
-def get_db_data(file_type="excel"):
-    file_path = f"db_performance_report.{file_type}"
-
-    # ✅ Updated Data
-    module_title = ["MODULE: Database Management"]
-    module_code = ["Module Code: CS203"]
-
-    average_attendance = 82
-    completed_assignments = 2
-    pending_assignments = 1
-    current_grade = 36.00  # ✅ Updated Current Grade
-
-    metrics = [
-        ["Average Attendance", average_attendance],
-        ["Completed Assignments", completed_assignments],
-        ["Pending Assignments", pending_assignments],
-        ["Current Grade (%)", current_grade]  # ✅ Updated Current Grade
-    ]
-
-    assignments = [
-        ["ASSESSMENT", "SCORE %"],  # ✅ Updated Table Header
-        ["Normalization Techniques", 88],
-        ["SQL Query Optimization", 92],
-        ["Final Database Exam", "TBD"]
-    ]
-
-    # ✅ Excel Report Generation
-    if file_type == "xlsx":
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "DB Report"
-
-        # ✅ Column Widths
-        ws.column_dimensions["A"].width = 40
-        ws.column_dimensions["B"].width = 20
-
-        # ✅ Merged Header for Module Title
-        ws.merge_cells("A1:B1")
-        ws["A1"] = module_title[0]
-        ws["A1"].font = Font(bold=True)
-        ws["A1"].alignment = Alignment(horizontal="center")
-
-        ws.merge_cells("A2:B2")
-        ws["A2"] = module_code[0]
-        ws["A2"].alignment = Alignment(horizontal="center")
-
-        # ✅ Attendance & Assignment Metrics (Bordered Table)
-        start_row = 4
-        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'),
-                             top=Side(style='thin'), bottom=Side(style='thin'))
-        for i, (metric, value) in enumerate(metrics):
-            ws[f"A{start_row + i}"] = metric
-            ws[f"B{start_row + i}"] = value
-            ws[f"A{start_row + i}"].border = thin_border
-            ws[f"B{start_row + i}"].border = thin_border
-
-        # ✅ Assessment Scores Table
-        ws["A8"] = "ASSESSMENT"  # ✅ Updated Header
-        ws["B8"] = "SCORE %"
-        ws["A8"].font = Font(bold=True)
-        ws["B8"].font = Font(bold=True)
-
-        start_row = 9
-        for i, (assignment, score) in enumerate(assignments[1:]):
-            ws[f"A{start_row + i}"] = assignment
-            ws[f"B{start_row + i}"] = score if score != "TBD" else "Pending"
-
-        # ✅ Add Excel Table with Filters
-        table = Table(displayName="AssessmentScores", ref=f"A8:B{start_row + len(assignments) - 2}")
-        style = TableStyleInfo(
-            name="TableStyleMedium9", showFirstColumn=False, showLastColumn=False,
-            showRowStripes=True, showColumnStripes=False
-        )
-        table.tableStyleInfo = style
-        ws.add_table(table)
-
-        # ✅ Save File
-        wb.save(file_path)
-        return file_path
-
-    # ✅ CSV Report Generation
-    elif file_type == "csv":
-        with open(file_path, "w") as f:
-            # ✅ Module Header
-            f.write("MODULE: Database Management\n")
-            f.write("Module Code: CS203\n\n")
-
-            # ✅ Metrics Table
-            f.write("Metric,Value\n")
-            for metric, value in metrics:
-                f.write(f"{metric},{value}\n")
-
-            f.write("\n")  # Space between tables
-
-            # ✅ Assessment Table
-            f.write("ASSESSMENT,SCORE %\n")  # ✅ Updated Header
-            for assignment, score in assignments[1:]:
-                f.write(f"{assignment},{score if score != 'TBD' else 'Pending'}\n")
-
-        return file_path
-
-# ✅ Routes for Downloading DB Report
-@app.route('/download_excel_db')
-@login_required
-def download_excel_db():
-    file_path = get_db_data("xlsx")
-    return send_file(file_path, as_attachment=True, download_name="DB_Report.xlsx")
-
-@app.route('/download_csv_db')
-@login_required
-def download_csv_db():
-    file_path = get_db_data("csv")
-    return send_file(file_path, as_attachment=True, download_name="DB_Report.csv")
-
-
-# ✅ Export Cybersecurity Report
-# ✅ Function to generate Cybersecurity report for Excel & CSV
-def get_cybersecurity_data(file_type="excel"):
-    file_path = f"cybersecurity_performance_report.{file_type}"
-
-    # ✅ Data for Cybersecurity Report
-    module_title = ["MODULE: Cybersecurity"]
-    module_code = ["Module Code: CS305"]
-
-    metrics = [
-        ["Average Attendance", 78],
-        ["Completed Assignments", 2],
-        ["Pending Assignments", 1],
-        ["Current Grade (%)", 68.80]  # ✅ Updated Current Grade
-    ]
-
-    assignments = [
-        ["ASSESSMENT", "SCORE %"],  # ✅ Updated Table Header
-        ["Network Security Protocols", 95],
-        ["Ethical Hacking Fundamentals", 88],
-        ["Malware Analysis", None]  # Pending
-    ]
-
-    # ✅ Excel Report Generation
-    if file_type == "xlsx":
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Cybersecurity Report"
-
-        # ✅ Column Widths
-        ws.column_dimensions["A"].width = 35
-        ws.column_dimensions["B"].width = 15
-
-        # ✅ 1. Merged Header for Module Title
-        ws.merge_cells("A1:B1")
-        ws["A1"] = module_title[0]
-        ws["A1"].font = Font(bold=True)
-        ws["A1"].alignment = Alignment(horizontal="center")
-
-        ws.merge_cells("A2:B2")
-        ws["A2"] = module_code[0]
-        ws["A2"].alignment = Alignment(horizontal="center")
-
-        # ✅ 2. Attendance & Assignment Metrics (Bordered Table)
-        start_row = 4
-        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'),
-                             top=Side(style='thin'), bottom=Side(style='thin'))
-        for i, (metric, value) in enumerate(metrics):
-            ws[f"A{start_row + i}"] = metric
-            ws[f"B{start_row + i}"] = value
-            ws[f"A{start_row + i}"].border = thin_border
-            ws[f"B{start_row + i}"].border = thin_border
-
-        # ✅ 3. Assignment Scores Table with Filters
         ws["A8"] = "ASSESSMENT"
         ws["B8"] = "SCORE %"
         ws["A8"].font = Font(bold=True)
         ws["B8"].font = Font(bold=True)
 
-        start_row = 9
-        for i, (assignment, score) in enumerate(assignments[1:]):
-            ws[f"A{start_row + i}"] = assignment
-            ws[f"B{start_row + i}"] = score if score is not None else ""
+        for i, (title, score) in enumerate(assignments):
+            ws[f"A{9 + i}"] = title
+            ws[f"B{9 + i}"] = score if score is not None else ""
 
-        # ✅ Add Excel Table with Filters
-        table = Table(displayName="CyberAssignments", ref=f"A8:B{start_row + len(assignments) - 2}")
-        style = TableStyleInfo(
-            name="TableStyleMedium9", showFirstColumn=False, showLastColumn=False,
-            showRowStripes=True, showColumnStripes=False
-        )
+        table = Table(displayName="ScoresTable", ref=f"A8:B{8 + len(assignments)}")
+        style = TableStyleInfo(name="TableStyleMedium9", showRowStripes=True)
         table.tableStyleInfo = style
         ws.add_table(table)
 
-        # ✅ Save File
         wb.save(file_path)
-        return file_path
+        return send_file(file_path, as_attachment=True, download_name=f"{safe_name}_Report.xlsx")
 
-    # ✅ CSV Report Generation (Same Structure)
     elif file_type == "csv":
-        with open(file_path, "w") as f:
-            # ✅ Module Header
-            f.write("MODULE: Cybersecurity\n")
-            f.write("Module Code: CS305\n\n")
-
-            # ✅ Metrics Table
-            f.write("Metric,Value\n")
+        with open(file_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow([f"MODULE: {module_data['module_name']}"])
+            writer.writerow([f"Module Code: {module_data['module_code']}"])
+            writer.writerow([])
+            writer.writerow(["Metric", "Value"])
             for metric, value in metrics:
-                f.write(f"{metric},{value}\n")
+                writer.writerow([metric, value])
+            writer.writerow([])
+            writer.writerow(["ASSESSMENT", "SCORE %"])
+            for title, score in assignments:
+                writer.writerow([title, score if score is not None else ""])
 
-            f.write("\n")  # Space between tables
+        return send_file(file_path, as_attachment=True, download_name=f"{safe_name}_Report.csv")
 
-            # ✅ Assignment Table
-            f.write("ASSESSMENT,SCORE %\n")
-            for assignment, score in assignments[1:]:
-                f.write(f"{assignment},{score if score is not None else ''}\n")
+@app.route('/download_excel_ai')
+@login_required
+def download_excel_ai():
+    module = fetch_module_data("CS203")
+    if not module:
+        return "Module not found", 404
+    return generate_module_report_from_dict(module, "xlsx")
 
-        return file_path
+@app.route('/download_csv_ai')
+@login_required
+def download_csv_ai():
+    module = fetch_module_data("CS203")
+    if not module:
+        return "Module not found", 404
+    return generate_module_report_from_dict(module, "csv")
 
-# ✅ Routes for Downloading Cybersecurity Report
+@app.route('/download_excel_webdev')
+@login_required
+def download_excel_webdev():
+    module = fetch_module_data("CS202")
+    if not module:
+        return "Module not found", 404
+    return generate_module_report_from_dict(module, "xlsx")
+
+@app.route('/download_csv_webdev')
+@login_required
+def download_csv_webdev():
+    module = fetch_module_data("CS202")
+    if not module:
+        return "Module not found", 404
+    return generate_module_report_from_dict(module, "csv")
+
+@app.route('/download_excel_db')
+@login_required
+def download_excel_db():
+    module = fetch_module_data("CS204")
+    if not module:
+        return "Module not found", 404
+    return generate_module_report_from_dict(module, "xlsx")
+
+@app.route('/download_csv_db')
+@login_required
+def download_csv_db():
+    module = fetch_module_data("CS204")
+    if not module:
+        return "Module not found", 404
+    return generate_module_report_from_dict(module, "csv")
+
 @app.route('/download_excel_cybersecurity')
 @login_required
 def download_excel_cybersecurity():
-    file_path = get_cybersecurity_data("xlsx")
-    return send_file(file_path, as_attachment=True, download_name="Cybersecurity_Report.xlsx")
+    module = fetch_module_data("CS205")
+    if not module:
+        return "Module not found", 404
+    return generate_module_report_from_dict(module, "xlsx")
 
 @app.route('/download_csv_cybersecurity')
 @login_required
 def download_csv_cybersecurity():
-    file_path = get_cybersecurity_data("csv")
-    return send_file(file_path, as_attachment=True, download_name="Cybersecurity_Report.csv")
-    
-# ✅ Export Student Performance Report
-# ✅ Function to generate Student Performance Dashboard report for Excel & CSV
-# ✅ Function to generate Student Performance Dashboard report for Excel & CSV
-def get_student_performance_data(file_type="excel"):
-    file_path = f"student_performance_report.{file_type}"
+    module = fetch_module_data("CS205")
+    if not module:
+        return "Module not found", 404
+    return generate_module_report_from_dict(module, "csv")
 
-    # ✅ Data for Student Performance Report
-    student_name = "Student: Mohammed Vohra"
-    student_id = "Student ID: 210034354"
-    attendance = "65%"
+@app.route('/download_excel_dsa')
+@login_required
+def download_excel_dsa():
+    module = fetch_module_data("CS201")
+    if not module:
+        return "Module not found", 404
+    return generate_module_report_from_dict(module, "xlsx")
 
-    grades = [
-        ["CS201: Data Structure & Algorithm", 70],
-        ["CS202: Web Development", 73],
-        ["CS203: Artificial Intelligence", 25.5],
-        ["CS204: Database Management", 36],
-        ["CS205: Cybersecurity", 68.8]
-    ]
+@app.route('/download_csv_dsa')
+@login_required
+def download_csv_dsa():
+    module = fetch_module_data("CS201")
+    if not module:
+        return "Module not found", 404
+    return generate_module_report_from_dict(module, "csv")
 
-    assignments = [
-        ["CS202: Web Development", "Responsive Design Project", "82%", "Completed"],
-        ["CS203: Artificial Intelligence", "Neural Network Implementation", "85%", "Completed"],
-        ["CS203: Artificial Intelligence", "Ethical Concerns in AI Development", "n/a", "Not Completed"],
-        ["CS203: Artificial Intelligence", "Sentiment Analysis using NLP", "n/a", "Not Started"],
-        ["CS204: Database Management", "Normalization Techniques", "88%", "Completed"],
-        ["CS204: Database Management", "SQL Query Optimization", "92%", "Completed"],
-        ["CS205: Cybersecurity", "Network Security Protocols", "80%", "Completed"],
-        ["CS205: Cybersecurity", "Ethical Hacking Fundamentals", "68%", "Completed"],
-        ["CS205: Cybersecurity", "Malware Analysis", "n/a", "Not Started"]
-    ]
 
-    exams = [
-        ["CS201: Data Structure & Algorithm", "DSA Exam", "78%", "Completed"],
-        ["CS202: Web Development", "Web Dev Exam", "85%", "Completed"],
-        ["CS204: Database Management", "Ethical Concerns in AI Development", "n/a", "Not Completed"]
-    ]
+####################################################################################################################
+def generate_student_dashboard_report(data, file_type):
+    file_path = f"Student_Performance_Report.{file_type}"
 
-    deadlines = [
-        ["CS203: Artificial Intelligence", "Ethical Concerns in AI Development", "21/03/2025", "10"],
-        ["CS202: Web Development", "Sentiment Analysis using NLP", "TBC", "TBC"],
-        ["CS204: Database Management", "Malware Analysis", "TBC", "TBC"]
-    ]
+    grades = data["grades"]
+    assignments = data["assignments"]
+    exams = data["exams"]
+    deadlines = data["deadlines"]
 
-    # ✅ Generate Excel Report
     if file_type == "xlsx":
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Student Performance Report"
+        ws.title = "Student Dashboard"
 
-        # ✅ Formatting styles
-        header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")  # Gold
-        completed_fill = PatternFill(start_color="92D050", end_color="92D050", fill_type="solid")  # Green
-        not_completed_fill = PatternFill(start_color="FF5050", end_color="FF5050", fill_type="solid")  # Red
-        border = Border(left=Side(style='thin'), right=Side(style='thin'), 
-                        top=Side(style='thin'), bottom=Side(style='thin'))
+        # Styles
+        header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
+        completed_fill = PatternFill(start_color="92D050", end_color="92D050", fill_type="solid")
+        not_completed_fill = PatternFill(start_color="FF5050", end_color="FF5050", fill_type="solid")
+        border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
 
-        # ✅ Title (Merged)
+        # Header
         ws.merge_cells("A1:D1")
         ws["A1"] = "STUDENT PERFORMANCE DASHBOARD"
         ws["A1"].font = Font(bold=True)
         ws["A1"].alignment = Alignment(horizontal="center")
 
         ws.merge_cells("A2:D2")
-        ws["A2"] = student_name
+        ws["A2"] = f"Student: {data['student_name']}"
         ws["A2"].alignment = Alignment(horizontal="center")
 
         ws.merge_cells("A3:D3")
-        ws["A3"] = student_id
+        ws["A3"] = f"Student ID: {data['student_id']}"
         ws["A3"].alignment = Alignment(horizontal="center")
 
-        ws["A5"] = "Average attendance for the year"
-        ws["B5"] = attendance
+        ws["A5"] = "Average Attendance"
+        ws["B5"] = data["attendance"]
 
-        # ✅ Grades Section
+        # Grades Table
         ws.merge_cells("A7:D7")
-        ws["A7"] = "Percentage of grades per module so far"
+        ws["A7"] = "Grades by Module"
         ws["A7"].fill = header_fill
         ws["A7"].alignment = Alignment(horizontal="center")
 
@@ -830,220 +440,155 @@ def get_student_performance_data(file_type="excel"):
         for row in grades:
             ws.append(row)
 
-        # Apply borders to grades table
         for row in ws.iter_rows(min_row=9, max_row=9 + len(grades), min_col=1, max_col=2):
             for cell in row:
                 cell.border = border
 
-        # ✅ Assignments Section
-        ws.append([""])  # Empty row for spacing
-        ws.merge_cells("A14:D14")
-        ws["A14"] = "Assignments completion status by Module"
-        ws["A14"].fill = header_fill
-        ws["A14"].alignment = Alignment(horizontal="center")
+        # Assignments
+        ws.append([""])
+        ws.merge_cells(f"A{ws.max_row + 1}:D{ws.max_row + 1}")
+        ws.cell(row=ws.max_row, column=1).value = "Assignments"
+        ws.cell(row=ws.max_row, column=1).fill = header_fill
+        ws.cell(row=ws.max_row, column=1).alignment = Alignment(horizontal="center")
 
         ws.append(["Module Name", "Assignment Name", "Score", "Status"])
         for row in assignments:
             ws.append(row)
 
-        # Apply borders and coloring for assignments table
-        for row in ws.iter_rows(min_row=16, max_row=16 + len(assignments), min_col=1, max_col=4):
+        for row in ws.iter_rows(min_row=ws.max_row - len(assignments), max_row=ws.max_row, min_col=1, max_col=4):
             for cell in row:
                 cell.border = border
-                if cell.column == 4:  # Status column
+                if cell.column == 4:
                     if cell.value == "Completed":
                         cell.fill = completed_fill
                     elif cell.value in ["Not Completed", "Not Started"]:
                         cell.fill = not_completed_fill
 
-        # ✅ Exams Section
-        ws.append([""])  # Empty row for spacing
-        ws.merge_cells("A26:D26")
-        ws["A26"] = "Exam completion status by Module"
-        ws["A26"].fill = header_fill
-        ws["A26"].alignment = Alignment(horizontal="center")
+        # Exams
+        ws.append([""])
+        ws.merge_cells(f"A{ws.max_row + 1}:D{ws.max_row + 1}")
+        ws.cell(row=ws.max_row, column=1).value = "Exams"
+        ws.cell(row=ws.max_row, column=1).fill = header_fill
+        ws.cell(row=ws.max_row, column=1).alignment = Alignment(horizontal="center")
 
         ws.append(["Module Name", "Exam Name", "Score", "Status"])
         for row in exams:
             ws.append(row)
 
-        # Apply borders for exams table
-        for row in ws.iter_rows(min_row=28, max_row=28 + len(exams), min_col=1, max_col=4):
+        for row in ws.iter_rows(min_row=ws.max_row - len(exams), max_row=ws.max_row, min_col=1, max_col=4):
             for cell in row:
                 cell.border = border
                 if cell.column == 4 and cell.value == "Not Completed":
                     cell.fill = not_completed_fill
 
-        # ✅ Deadlines Section
-        ws.append([""])  # Empty row for spacing
-        ws.merge_cells("A32:D32")
-        ws["A32"] = "Upcoming Deadlines"
-        ws["A32"].fill = header_fill
-        ws["A32"].alignment = Alignment(horizontal="center")
+        # Deadlines
+        ws.append([""])
+        ws.merge_cells(f"A{ws.max_row + 1}:D{ws.max_row + 1}")
+        ws.cell(row=ws.max_row, column=1).value = "Upcoming Deadlines"
+        ws.cell(row=ws.max_row, column=1).fill = header_fill
+        ws.cell(row=ws.max_row, column=1).alignment = Alignment(horizontal="center")
 
         ws.append(["Module Name", "Assignment Name", "Deadline Date", "Days Left"])
         for row in deadlines:
             ws.append(row)
 
-        # Apply borders for deadlines table
-        for row in ws.iter_rows(min_row=34, max_row=34 + len(deadlines), min_col=1, max_col=4):
+        for row in ws.iter_rows(min_row=ws.max_row - len(deadlines), max_row=ws.max_row, min_col=1, max_col=4):
             for cell in row:
                 cell.border = border
 
-        # ✅ Save Excel File
         wb.save(file_path)
-        return file_path
+        return send_file(file_path, as_attachment=True, download_name=file_path)
 
-    # ✅ Generate CSV Report
+    # CSV version
     elif file_type == "csv":
         with open(file_path, "w", newline="", encoding="utf-8") as f:
-            f.write("STUDENT PERFORMANCE DASHBOARD\n")
-            f.write(f"{student_name}\n")
-            f.write(f"{student_id}\n\n")
+            writer = csv.writer(f)
+            writer.writerow(["STUDENT PERFORMANCE DASHBOARD"])
+            writer.writerow([f"Student: {data['student_name']}"])
+            writer.writerow([f"Student ID: {data['student_id']}"])
+            writer.writerow([])
+            writer.writerow(["Average Attendance", data["attendance"]])
+            writer.writerow([])
 
-            f.write("Average Attendance,65%\n\n")
-
-            f.write("Module Name,Grade %\n")
+            writer.writerow(["Module Name", "Grade %"])
             for row in grades:
-                f.write(",".join(map(str, row)) + "\n")
-            f.write("\n")
+                writer.writerow(row)
+            writer.writerow([])
 
-            f.write("Module Name,Assignment Name,Score,Status\n")
+            writer.writerow(["Module Name", "Assignment Name", "Score", "Status"])
             for row in assignments:
-                f.write(",".join(map(str, row)) + "\n")
-            f.write("\n")
+                writer.writerow(row)
+            writer.writerow([])
 
-            f.write("Module Name,Exam Name,Score,Status\n")
+            writer.writerow(["Module Name", "Exam Name", "Score", "Status"])
             for row in exams:
-                f.write(",".join(map(str, row)) + "\n")
-            f.write("\n")
+                writer.writerow(row)
+            writer.writerow([])
 
-            f.write("Module Name,Assignment Name,Deadline Date,Days Left\n")
+            writer.writerow(["Module Name", "Assignment Name", "Deadline Date", "Days Left"])
             for row in deadlines:
-                f.write(",".join(map(str, row)) + "\n")
+                writer.writerow(row)
 
-        return file_path
+        return send_file(file_path, as_attachment=True, download_name=file_path)
 
-    return None  # If file_type is invalid
 
-# ✅ Flask Routes
+
+
+
+
+
+
+
 @app.route('/download_excel_student_performance')
+@login_required
 def download_excel_student_performance():
-    file_path = get_student_performance_data("xlsx")
-    return send_file(file_path, as_attachment=True, download_name="Student_Performance_Report.xlsx")
+    data = fetch_student_dashboard()
+    return generate_student_dashboard_report(data, "xlsx")
 
 @app.route('/download_csv_student_performance')
+@login_required
 def download_csv_student_performance():
-    file_path = get_student_performance_data("csv")
-    return send_file(file_path, as_attachment=True, download_name="Student_Performance_Report.csv")
-# ✅ Export Data Structures Report
-# ✅ Function to generate Data Structures & Algorithms report for Excel & CSV
-def get_dsa_data(file_type="excel"):
-    file_path = f"dsa_performance_report.{file_type}"
+    data = fetch_student_dashboard()
+    return generate_student_dashboard_report(data, "csv")
 
-    # ✅ Data for DSA Report
-    module_title = ["MODULE: Data Structures & Algorithms"]
-    module_code = ["Module Code: CS201"]
 
-    metrics = [
-        ["Average Attendance", 85],
-        ["Current Grade", "78%"]
-    ]
 
-    exam_details = [
-        ["ASSESSMENT", "SCORE %"],  # Table Header
-        ["DSA Exam", 78]
-    ]
 
-    # ✅ Excel Report Generation
-    if file_type == "xlsx":
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "DSA Report"
-
-        # ✅ Column Widths
-        ws.column_dimensions["A"].width = 35
-        ws.column_dimensions["B"].width = 15
-
-        # ✅ 1. Merged Header for Module Title
-        ws.merge_cells("A1:B1")
-        ws["A1"] = module_title[0]
-        ws["A1"].font = Font(bold=True)
-        ws["A1"].alignment = Alignment(horizontal="center")
-
-        ws.merge_cells("A2:B2")
-        ws["A2"] = module_code[0]
-        ws["A2"].alignment = Alignment(horizontal="center")
-
-        # ✅ 2. Attendance & Grade Metrics
-        start_row = 4
-        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'),
-                             top=Side(style='thin'), bottom=Side(style='thin'))
-        for i, (metric, value) in enumerate(metrics):
-            ws[f"A{start_row + i}"] = metric
-            ws[f"B{start_row + i}"] = value
-            ws[f"A{start_row + i}"].border = thin_border
-            ws[f"B{start_row + i}"].border = thin_border
-
-        # ✅ 3. Exam Score Table
-        ws["A7"] = "ASSESSMENT"
-        ws["B7"] = "SCORE %"
-        ws["A7"].font = Font(bold=True)
-        ws["B7"].font = Font(bold=True)
-
-        start_row = 8
-        for i, (exam, score) in enumerate(exam_details[1:]):
-            ws[f"A{start_row + i}"] = exam
-            ws[f"B{start_row + i}"] = score
-
-        # ✅ Add Excel Table with Filters
-        table = Table(displayName="DSAExam", ref=f"A7:B{start_row + len(exam_details) - 2}")
-        style = TableStyleInfo(
-            name="TableStyleMedium9", showFirstColumn=False, showLastColumn=False,
-            showRowStripes=True, showColumnStripes=False
-        )
-        table.tableStyleInfo = style
-        ws.add_table(table)
-
-        # ✅ Save File
-        wb.save(file_path)
-        return file_path
-
-    # ✅ CSV Report Generation (Same Structure)
-    elif file_type == "csv":
-        with open(file_path, "w") as f:
-            # ✅ Module Header
-            f.write("MODULE: Data Structures & Algorithms\n")
-            f.write("Module Code: CS201\n\n")
-
-            # ✅ Metrics Table
-            f.write("Metric,Value\n")
-            for metric, value in metrics:
-                f.write(f"{metric},{value}\n")
-
-            f.write("\n")  # Space between tables
-
-            # ✅ Exam Table
-            f.write("ASSESSMENT,SCORE %\n")
-            for exam, score in exam_details[1:]:
-                f.write(f"{exam},{score}\n")
-
-        return file_path
-
-# ✅ Routes for Downloading DSA Report
-@app.route('/download_excel_dsa')
+@app.route('/download_excel_attendance')
 @login_required
-def download_excel_dsa():
-    file_path = get_dsa_data("xlsx")
-    return send_file(file_path, as_attachment=True, download_name="DSA_Report.xlsx")
+def download_excel_attendance():
+    conn = sqlite3.connect("reports_data.db")
+    df = pd.read_sql_query("""
+        SELECT m.module_name AS 'Module', r.avg_attendance AS 'Attendance (%)'
+        FROM report_data r
+        JOIN modules m ON r.module_code = m.module_code
+    """, conn)
+    conn.close()
+    return export_file(df, "Attendance_Report", "xlsx")
 
-@app.route('/download_csv_dsa')
+@app.route('/download_csv_attendance')
 @login_required
-def download_csv_dsa():
-    file_path = get_dsa_data("csv")
-    return send_file(file_path, as_attachment=True, download_name="DSA_Report.csv")
+def download_csv_attendance():
+    conn = sqlite3.connect("reports_data.db")
+    df = pd.read_sql_query("""
+        SELECT m.module_name AS 'Module', r.avg_attendance AS 'Attendance (%)'
+        FROM report_data r
+        JOIN modules m ON r.module_code = m.module_code
+    """, conn)
+    conn.close()
+    return export_file(df, "Attendance_Report", "csv")
 
-# lecturers expots
+###############################################################################################################################
+
+
+
+
+
+
+
+
+
+# lecturers exports
 # ✅ Function to generate Lecturer Dashboard Export with updated data
 def generate_lecturer_dashboard_report(file_type="excel"):
     file_path = f"overview_dashboard.{file_type}"

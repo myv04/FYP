@@ -1,22 +1,36 @@
 import dash
 from dash import dcc, html
 import plotly.graph_objs as go
+import sqlite3
+import json
 
-# Create Dash app
+# Fetch data for CS201 from student_performance.db
+def fetch_dsa_data():
+    conn = sqlite3.connect("student_performance.db")
+    c = conn.cursor()
+    c.execute("SELECT attendance, grade, exams_json FROM student_modules WHERE module_code = 'CS201'")
+    row = c.fetchone()
+    conn.close()
+
+    if row:
+        attendance, grade, exams_json = row
+        exams = json.loads(exams_json)
+        exam_score = exams[0]["score"] if exams else 0
+        exam_name = exams[0]["name"] if exams else "DSA Exam"
+        return attendance, grade, exam_name, exam_score
+    else:
+        return 0, 0, "DSA Exam", 0
+
+# Get the data
+average_attendance, current_grade, exam_name, exam_score = fetch_dsa_data()
+remaining_attendance = 100 - average_attendance
+
+# Dash app
 dash_dsa = dash.Dash(
     __name__,
-    routes_pathname_prefix="/dashboard_dsa/",  # Ensure it matches the URL in the iframe
+    routes_pathname_prefix="/dashboard_dsa/",
     suppress_callback_exceptions=True
 )
-
-# Sample Data for Data Structures & Algorithms Exam
-average_attendance = 85  
-remaining_attendance = 100 - average_attendance  
-
-# Exam Details
-exam_name = "DSA Exam"
-exam_score = 78  # Student's final exam score
-exam_weight = 100  # Example weight for the exam
 
 # Donut Chart (Attendance)
 attendance_chart = go.Figure(
@@ -30,54 +44,52 @@ attendance_chart = go.Figure(
 )
 attendance_chart.update_layout(title="Data Structures & Algorithms - Attendance", title_x=0.5)
 
-# Bar Chart (Exam Score)
+# Bar Chart (Exam Scores)
 exam_chart = go.Figure()
 exam_chart.add_trace(go.Bar(
     x=["DSA Exam"],
     y=[exam_score],
-    name="Exam Score",
-    marker=dict(color="#2ecc71" if exam_score >= 50 else "#e74c3c"),
+    marker=dict(color="#2ecc71"),
     text=[f"{exam_score}%"],
-    textposition="auto"
+    textposition="auto",
 ))
 exam_chart.update_layout(
     title="Data Structures & Algorithms Exam",
     title_x=0.5,
     xaxis_title="Exam",
-    yaxis_title="Score"
+    yaxis_title="Score",
+    yaxis=dict(range=[0, 100])
 )
 
-# Exam Status Chart
+# Status Chart
 status_chart = go.Figure()
 status_chart.add_trace(go.Bar(
     x=["Data Structures & Algorithms"],
     y=[1],
-    name="Exam",
-    marker=dict(color="#2ecc71" if exam_score >= 50 else "#e74c3c"),
-    hovertext=[f"{exam_name}, Weight: {exam_weight}%"],
-    hoverinfo="text"
+    name="DSA Exam",
+    marker=dict(color="#2ecc71"),
+    hovertext=f"{exam_name} - Score: {exam_score}%"
 ))
 status_chart.update_layout(
     title="Exam Status",
+    barmode="stack",
     xaxis_title="Course",
     yaxis_title="Status",
-    showlegend=False
+    legend_title="Status"
 )
 
-# Dashboard Layout
+# Layout
 dash_dsa.layout = html.Div(style={
     'fontFamily': 'Arial, sans-serif',
     'backgroundColor': '#f8f9fa',
     'padding': '30px'
 }, children=[
-
     html.H2("Data Structures & Algorithms Dashboard", style={
-        'textAlign': 'center',
+        'textAlign': 'left',
         'color': '#34495e',
         'marginBottom': '30px'
     }),
 
-    # First Row: Attendance & Exam Score Chart
     html.Div(style={
         'display': 'grid',
         'gridTemplateColumns': '1fr 1fr',
@@ -99,7 +111,6 @@ dash_dsa.layout = html.Div(style={
         })
     ]),
 
-    # Current Grade Section
     html.Div(style={
         'display': 'flex',
         'justifyContent': 'center',
@@ -115,10 +126,10 @@ dash_dsa.layout = html.Div(style={
             'width': '300px'
         }, children=[
             html.H3("Current Grade", style={'color': '#34495e'}),
-            html.P(f"{exam_score}%", style={
+            html.P(f"{current_grade:.2f}%", style={
                 'fontSize': '28px',
                 'fontWeight': 'bold',
-                'color': '#2ecc71' if exam_score >= 50 else '#e74c3c',
+                'color': '#2ecc71' if current_grade >= 50 else '#e74c3c',
                 'backgroundColor': '#ecf0f1',
                 'borderRadius': '10px',
                 'display': 'inline-block',
@@ -128,7 +139,6 @@ dash_dsa.layout = html.Div(style={
         ])
     ]),
 
-    # Exam Status Chart
     html.Div(dcc.Graph(figure=status_chart), style={
         'backgroundColor': 'white',
         'borderRadius': '10px',
@@ -138,6 +148,5 @@ dash_dsa.layout = html.Div(style={
     })
 ])
 
-# Function to integrate with Flask
 def init_dashboard(server):
     dash_dsa.init_app(server)

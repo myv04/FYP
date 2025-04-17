@@ -1,38 +1,73 @@
 import dash
 from dash import dcc, html, dash_table
 import plotly.graph_objs as go
+import sqlite3
+import json
 
-# Create Dash app
+# Function to save data to the shared DB (only called once)
+def save_module_data(module_code, module_name, attendance, grade, assignments, exams, deadlines):
+    conn = sqlite3.connect("student_performance.db")
+    c = conn.cursor()
+
+    assignments_json = json.dumps(assignments)
+    exams_json = json.dumps(exams)
+    deadlines_json = json.dumps(deadlines)
+
+    c.execute('''
+        INSERT OR REPLACE INTO student_modules
+        (module_code, module_name, attendance, grade, assignments_json, exams_json, deadlines_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (module_code, module_name, attendance, grade, assignments_json, exams_json, deadlines_json))
+
+    conn.commit()
+    conn.close()
+
+# ====== ORIGINAL DATA (unchanged) ======
+average_attendance = 82
+remaining_attendance = 100 - average_attendance
+
+exam_name = "Final Database Exam"
+assignment_1_name = "Normalization Techniques"
+assignment_2_name = "SQL Query Optimization"
+
+assignment_1_score = 88
+assignment_2_score = 92
+exam_score = None  # Exam not completed
+
+assignment_1_weight = 20
+assignment_2_weight = 20
+exam_weight = 60
+
+assignment_1_weighted = (assignment_1_score / 100) * assignment_1_weight
+assignment_2_weighted = (assignment_2_score / 100) * assignment_2_weight
+exam_weighted = 0  # Not completed
+
+current_grade = assignment_1_weighted + assignment_2_weighted + exam_weighted
+
+# ====== Save to database (will overwrite only if changed) ======
+save_module_data(
+    module_code="CS204",
+    module_name="Database Management",
+    attendance=average_attendance,
+    grade=current_grade,
+    assignments=[
+        {"name": assignment_1_name, "status": "Completed", "score": assignment_1_score},
+        {"name": assignment_2_name, "status": "Completed", "score": assignment_2_score}
+    ],
+    exams=[
+        {"name": exam_name, "status": "Not Completed"}
+    ],
+    deadlines=[
+        {"name": exam_name, "deadline": "TBC", "days_left": "TBC"}
+    ]
+)
+
+# ====== Dash App Starts ======
 dash_db = dash.Dash(
     __name__,
     routes_pathname_prefix="/dashboard_db/",
     suppress_callback_exceptions=True
 )
-
-# Sample Data
-average_attendance = 82
-remaining_attendance = 100 - average_attendance
-
-# Exam & Assignment Data
-exam_name = "Final Database Exam"
-assignment_1_name = "Normalization Techniques"
-assignment_2_name = "SQL Query Optimization"
-
-assignment_1_score = 88  # Realistic score
-assignment_2_score = 92  # Realistic score
-exam_score = None  # Exam not done yet
-
-# Weight Distribution
-assignment_1_weight = 20
-assignment_2_weight = 20
-exam_weight = 60
-
-# Calculate Weighted Grade (Only for Completed)
-assignment_1_weighted = (assignment_1_score / 100) * assignment_1_weight
-assignment_2_weighted = (assignment_2_score / 100) * assignment_2_weight
-exam_weighted = (exam_score / 100) * exam_weight if exam_score is not None else 0
-
-current_grade = assignment_1_weighted + assignment_2_weighted + exam_weighted
 
 # Donut Chart (Attendance)
 attendance_chart = go.Figure(
@@ -63,21 +98,18 @@ exam_assignment_chart.update_layout(
     yaxis=dict(range=[0, 100]),
 )
 
-# Exam & Assignment Status Chart (With Hover Info for Weight)
-# Exam & Assignment Status Chart (With Two Legends)
+# Status Chart
 status_chart = go.Figure()
-
-# ✅ Both assignments under one legend
 status_chart.add_trace(go.Bar(
     x=["Database Management", "Database Management"],
     y=[1, 1],
-    name="Assignment Completed",  # Single legend for both assignments
+    name="Assignment Completed",
     marker=dict(color="#2ecc71"),
-    hovertext=[f"{assignment_1_name} - Weight: {assignment_1_weight}%", 
-               f"{assignment_2_name} - Weight: {assignment_2_weight}%"]
+    hovertext=[
+        f"{assignment_1_name} - Weight: {assignment_1_weight}%",
+        f"{assignment_2_name} - Weight: {assignment_2_weight}%"
+    ]
 ))
-
-# ✅ Exam has its own legend
 status_chart.add_trace(go.Bar(
     x=["Database Management"],
     y=[1],
@@ -85,7 +117,6 @@ status_chart.add_trace(go.Bar(
     marker=dict(color="#e74c3c"),
     hovertext=f"{exam_name} - Weight: {exam_weight}%"
 ))
-
 status_chart.update_layout(
     title="Exam & Assignment Status",
     barmode="stack",
@@ -94,25 +125,21 @@ status_chart.update_layout(
     legend_title="Status"
 )
 
-# Upcoming Exam Table Data
-upcoming_exams = [
-    {"Exam": "Final Database Exam", "Date": "TBC"}
-]
+# Upcoming Exam Table
+upcoming_exams = [{"Exam": exam_name, "Date": "TBC"}]
 
-# Dashboard Layout
+# Layout
 dash_db.layout = html.Div(style={
     'fontFamily': 'Arial, sans-serif',
     'backgroundColor': '#f8f9fa',
     'padding': '30px'
 }, children=[
-
     html.H2("Database Management Dashboard", style={
-        'textAlign': 'center', 
-        'color': '#34495e', 
+        'textAlign': 'center',
+        'color': '#34495e',
         'marginBottom': '30px'
     }),
 
-    # First Row: Attendance & Exam/Assignment Scores
     html.Div(style={
         'display': 'grid',
         'gridTemplateColumns': '1fr 1fr',
@@ -134,7 +161,6 @@ dash_db.layout = html.Div(style={
         })
     ]),
 
-    # Current Grade
     html.Div(style={
         'display': 'flex',
         'justifyContent': 'center',
@@ -163,7 +189,6 @@ dash_db.layout = html.Div(style={
         ])
     ]),
 
-    # Exam & Assignment Status Chart
     html.Div(dcc.Graph(figure=status_chart), style={
         'backgroundColor': 'white',
         'borderRadius': '10px',
@@ -172,7 +197,6 @@ dash_db.layout = html.Div(style={
         'boxShadow': '0 4px 8px rgba(0, 0, 0, 0.1)'
     }),
 
-    # Upcoming Exam Table
     html.Div(style={
         'display': 'flex',
         'justifyContent': 'center',
@@ -199,6 +223,6 @@ dash_db.layout = html.Div(style={
     ])
 ])
 
-# Function to integrate with Flask
+# Flask integration
 def init_dashboard(server):
     dash_db.init_app(server)

@@ -1,6 +1,8 @@
 import dash
 from dash import dcc, html
 import plotly.graph_objs as go
+import sqlite3
+import json
 
 # Create Dash app
 dash_webdev = dash.Dash(
@@ -9,31 +11,61 @@ dash_webdev = dash.Dash(
     suppress_callback_exceptions=True
 )
 
-# Sample Data
-average_attendance = 80
-remaining_attendance = 100 - average_attendance
+# -------- Fetch Data from DB for Web Dev (CS202) --------
+def get_webdev_data():
+    conn = sqlite3.connect("student_performance.db")
+    c = conn.cursor()
+    c.execute("SELECT * FROM student_modules WHERE module_code = 'CS202'")
+    row = c.fetchone()
+    conn.close()
 
-# Exam and Assignment Data
-exam_name = "Final Web Development Exam"
-assignment_name = "Responsive Design Project"
-assignment_status = "Completed"
-assignment_score = 82  # More realistic
-exam_score = 76  # More realistic
+    if row:
+        module_data = {
+            "attendance": row[2],
+            "grade": row[3],
+            "assignments": json.loads(row[4]),
+            "exams": json.loads(row[5])
+        }
+        return module_data
+    else:
+        return None
+
+data = get_webdev_data()
+
+# Default fallbacks if DB fails
+attendance = data["attendance"] if data else 80
+grade = data["grade"] if data else 79
+assignments = data["assignments"] if data else []
+exams = data["exams"] if data else []
+
+# ----- Pulling Web Dev specific info -----
+# Get first assignment (for visual)
+assignment = assignments[0] if assignments else {"name": "Responsive Design Project", "status": "Completed", "score": 82}
+assignment_name = assignment["name"]
+assignment_status = assignment["status"]
+assignment_score = assignment.get("score", 82)
+
+# Get first exam
+exam = exams[0] if exams else {"name": "Final Web Development Exam", "status": "Completed", "score": 76}
+exam_name = exam["name"]
+exam_score = exam.get("score", 76)
 
 # Weight Distribution
 exam_weight = 50
 assignment_weight = 50
 
-# Calculate Weighted Grade
+# Weighted grade
 assignment_weighted = (assignment_score / 100) * assignment_weight
 exam_weighted = (exam_score / 100) * exam_weight
 current_grade = assignment_weighted + exam_weighted
 
-# Donut Chart (Attendance)
+# Charts
+
+# Attendance Donut
 attendance_chart = go.Figure(
     data=[go.Pie(
         labels=["Attendance", "Absent"],
-        values=[average_attendance, remaining_attendance],
+        values=[attendance, 100 - attendance],
         hole=0.4,
         marker=dict(colors=["#ff8d1a", "#e0e0e0"]),
         textinfo="label+percent",
@@ -41,13 +73,13 @@ attendance_chart = go.Figure(
 )
 attendance_chart.update_layout(title="Web Development - Attendance", title_x=0.5)
 
-# Bar Chart (Exam and Assignment Scores)
+# Exam + Assignment Scores
 exam_assignment_chart = go.Figure()
 exam_assignment_chart.add_trace(go.Bar(
     x=[exam_name, assignment_name],
     y=[exam_score, assignment_score],
     marker=dict(color=["#3498db", "#2ecc71"]),
-    text=[f"{exam_score}%", f"{assignment_score}%"],  # Display text directly on bars
+    text=[f"{exam_score}%", f"{assignment_score}%"],
     textposition="auto",
 ))
 exam_assignment_chart.update_layout(
@@ -55,10 +87,10 @@ exam_assignment_chart.update_layout(
     title_x=0.5,
     xaxis_title="Assessments",
     yaxis_title="Score",
-    yaxis=dict(range=[0, 100]),  # Ensures full visibility of scores
+    yaxis=dict(range=[0, 100])
 )
 
-# Exam & Assignment Status Chart (With Hover Info for Weight)
+# Status Bar
 status_chart = go.Figure()
 status_chart.add_trace(go.Bar(
     x=["Web Development"],
@@ -82,7 +114,7 @@ status_chart.update_layout(
     legend_title="Status"
 )
 
-# Dashboard Layout
+# Layout
 dash_webdev.layout = html.Div(style={
     'fontFamily': 'Arial, sans-serif',
     'backgroundColor': '#f8f9fa',
@@ -90,12 +122,11 @@ dash_webdev.layout = html.Div(style={
 }, children=[
 
     html.H2("Web Development Dashboard", style={
-        'textAlign': 'center', 
-        'color': '#34495e', 
+        'textAlign': 'center',
+        'color': '#34495e',
         'marginBottom': '30px'
     }),
 
-    # First Row: Attendance & Exam/Assignment Scores
     html.Div(style={
         'display': 'grid',
         'gridTemplateColumns': '1fr 1fr',
@@ -117,7 +148,6 @@ dash_webdev.layout = html.Div(style={
         })
     ]),
 
-    # Current Grade
     html.Div(style={
         'display': 'flex',
         'justifyContent': 'center',
@@ -146,7 +176,6 @@ dash_webdev.layout = html.Div(style={
         ])
     ]),
 
-    # Exam & Assignment Status Chart
     html.Div(dcc.Graph(figure=status_chart), style={
         'backgroundColor': 'white',
         'borderRadius': '10px',
@@ -156,6 +185,6 @@ dash_webdev.layout = html.Div(style={
     })
 ])
 
-# Function to integrate with Flask
+# Connect Dash with Flask
 def init_dashboard(server):
     dash_webdev.init_app(server)
