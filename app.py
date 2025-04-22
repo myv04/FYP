@@ -29,6 +29,13 @@ from datetime import datetime, timedelta
 from report_data_loader import fetch_module_data
 import csv
 from student_data_loader import fetch_student_dashboard
+from flask import session
+from flask import Flask, render_template, redirect, url_for, request, flash, session
+from flask_login import login_user, logout_user, login_required
+from data_persistence import load_data
+from helpers.shared_dashboard_data import get_processed_se_data, get_processed_ds_data
+from openpyxl.utils import get_column_letter
+import json
 
 
 
@@ -73,6 +80,8 @@ def login():
 @login_required
 def logout():
     logout_user()
+    session.pop('_flashes', None)  # 👈 this clears existing flash messages
+    flash("You have been logged out.", "info")
     return redirect(url_for('login'))
 
 @app.route('/home_student')
@@ -590,43 +599,61 @@ def download_csv_attendance():
 
 # lecturers exports
 # ✅ Function to generate Lecturer Dashboard Export with updated data
-def generate_lecturer_dashboard_report(file_type="excel"):
+def generate_lecturer_dashboard_report(file_type="xlsx"):
     file_path = f"overview_dashboard.{file_type}"
 
-    # 📌 Updated Data from Lecturer Dashboard
+    # ✅ Use processed DataFrames
+    se_df = get_processed_se_data()
+    ds_df = get_processed_ds_data()
+
+    # ✅ Compute metrics
+    se_avg = se_df["Final Grade"].mean() if not se_df.empty else 0
+    ds_avg = ds_df["Final Grade"].mean() if not ds_df.empty else 0
+    avg_attendance = (se_df["Attendance"].mean() + ds_df["Attendance"].mean()) / 2 if not se_df.empty and not ds_df.empty else 0
+    remaining_attendance = round(100 - avg_attendance, 2)
+
+    # ✅ Metrics Table
     metrics = [
         ["Metric", "Value"],
-        ["Average Attendance (%)", 85],
-        ["Remaining Attendance (%)", 15],
-        ["Software Engineering Avg Score (%)", 82],
-        ["Data Science Avg Score (%)", 88]
+        ["Average Attendance (%)", round(avg_attendance, 2)],
+        ["Remaining Attendance (%)", remaining_attendance],
+        ["Software Engineering Avg Score (%)", round(se_avg, 2)],
+        ["Data Science Avg Score (%)", round(ds_avg, 2)]
     ]
+
+    # ✅ Assignment Stats (from live data)
+    def get_status_counts(df, assignment):
+        return df[assignment].value_counts().to_dict()
 
     assignments = [
         ["Assignment", "Completed", "Completed with Penalty", "Not Completed", "Absent"],
-        ["Agile Development - Assignment 1 (Bugs and Fixes)", 42, 3, 3, 2],
-        ["Agile Development - Assignment 2 (Software Architecture)", 37, 8, 4, 1],
-        ["Machine Learning - Assignment 1 (Data Analysis)", 40, 8, 2, 0],
-        ["Machine Learning - Assignment 2 (Machine Learning)", 42, 5, 3, 0]
+        ["Agile Development - Assignment 1 (Bugs and Fixes)"] +
+        [get_status_counts(se_df, "Assignment 1 Status").get(k, 0) for k in ["Completed", "Completed with Penalty", "Not Completed", "Absent"]],
+        ["Agile Development - Assignment 2 (Software Architecture)"] +
+        [get_status_counts(se_df, "Assignment 2 Status").get(k, 0) for k in ["Completed", "Completed with Penalty", "Not Completed", "Absent"]],
+        ["Machine Learning - Assignment 1 (Data Analysis)"] +
+        [get_status_counts(ds_df, "Assignment 1 Status").get(k, 0) for k in ["Completed", "Completed with Penalty", "Not Completed", "Absent"]],
+        ["Machine Learning - Assignment 2 (Machine Learning)"] +
+        [get_status_counts(ds_df, "Assignment 2 Status").get(k, 0) for k in ["Completed", "Completed with Penalty", "Not Completed", "Absent"]],
     ]
 
-    # ✅ Generate Excel Report
+    # ✅ Export Logic
     if file_type == "xlsx":
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Lecturer Overview Report"
 
-        # ✅ Styling
         header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
-        border = Border(left=Side(style='thin'), right=Side(style='thin'), 
+        border = Border(left=Side(style='thin'), right=Side(style='thin'),
                         top=Side(style='thin'), bottom=Side(style='thin'))
 
-        # ✅ Metrics Table
+        # 📌 Title
         ws.merge_cells("A1:B1")
         ws["A1"] = "Lecturer Dashboard Overview"
         ws["A1"].font = Font(bold=True)
         ws["A1"].alignment = Alignment(horizontal="center")
 
+        # 📌 Metrics Table
         for row_idx, row in enumerate(metrics, start=3):
             ws.append(row)
             ws[f"A{row_idx}"].border = border
@@ -635,8 +662,8 @@ def generate_lecturer_dashboard_report(file_type="excel"):
                 ws[f"A{row_idx}"].fill = header_fill
                 ws[f"B{row_idx}"].fill = header_fill
 
-        # ✅ Assignments Table
-        ws.append([""])  # Empty row for spacing
+        # 📌 Assignments Table
+        ws.append([""])  # Spacer
         start_row = len(metrics) + 5
         for row_idx, row in enumerate(assignments, start=start_row):
             ws.append(row)
@@ -646,18 +673,16 @@ def generate_lecturer_dashboard_report(file_type="excel"):
                 if row_idx == start_row:
                     cell.fill = header_fill
 
-        # ✅ Save Excel File
         wb.save(file_path)
         return file_path
 
-    # ✅ Generate CSV Report
     elif file_type == "csv":
         df_metrics = pd.DataFrame(metrics[1:], columns=metrics[0])
         df_assignments = pd.DataFrame(assignments[1:], columns=assignments[0])
 
         with open(file_path, "w") as f:
             df_metrics.to_csv(f, index=False)
-            f.write("\n")  # Add a blank line between tables
+            f.write("\n")
             df_assignments.to_csv(f, index=False)
 
         return file_path
@@ -683,130 +708,54 @@ def download_csv_lecturer_dashboard():
 def generate_software_engineering_report(file_type="excel"):
     file_path = f"software_engineering_dashboard.{file_type}"
 
-    # 📌 Sample Data from Software Engineering Dashboard
-    student_names = [
-        "Alice Johnson", "Bob Smith", "Charlie Davis", "David Martinez", "Eve Brown",
-        "Frank Wilson", "Grace Taylor", "Hank Anderson", "Ivy Thomas", "Jack White",
-        "Karen Harris", "Leo Martin", "Mona Clark", "Nathan Lewis", "Olivia Hall",
-        "Peter Allen", "Quincy Young", "Rachel King", "Steve Wright", "Tina Scott",
-        "Uma Green", "Victor Adams", "Wendy Baker", "Xander Nelson", "Yvonne Carter",
-        "Zachary Mitchell", "Aaron Perez", "Bella Roberts", "Cody Gonzalez", "Diana Campbell",
-        "Ethan Rodriguez", "Fiona Moore", "George Edwards", "Holly Flores", "Ian Cooper",
-        "Julia Murphy", "Kevin Reed", "Laura Cox", "Mike Ward", "Nina Peterson",
-        "Oscar Gray", "Paula Jenkins", "Quinn Russell", "Randy Torres", "Samantha Stevens",
-        "Tommy Parker", "Ursula Evans", "Vince Morgan", "Whitney Bell", "Xavier Phillips"
-    ]
+    # ✅ Get live processed data
+    df = get_processed_se_data()
 
-    student_ids = [f"SE{random.randint(1000,9999)}" for _ in student_names]
-    attendance_scores = [random.randint(70, 100) if random.random() > 0.1 else random.randint(50, 69) for _ in student_names]
+    # ✅ Clean up duplicates — only keep needed, nicely formatted columns
+    df = df[[
+        "ID", "Student", "Final Grade", "Attendance", "Exam Status", "Exam Score",
+        "Assignment 1 (Bugs and Fixes)", "Assignment 1 Status", "Assignment 1 Penalty",
+        "Assignment 2 (Software Architecture)", "Assignment 2 Status", "Assignment 2 Penalty",
+        "Status"
+    ]]
 
-    assignment_1_status = ["Completed"] * 45 + ["Absent"] * 2 + ["Not Completed"] * 3
-    random.shuffle(assignment_1_status)
-    assignment_2_status = ["Completed"] * 45 + ["Absent"] * 2 + ["Not Completed"] * 3
-    random.shuffle(assignment_2_status)
-
-    assignment_1_scores = [random.randint(65, 98) if status == "Completed" else 0 for status in assignment_1_status]
-    assignment_2_scores = [random.randint(65, 98) if status == "Completed" else 0 for status in assignment_2_status]
-
-    # Ensure students with 0 score on one assignment still have scores on the other
-    for i in range(len(student_names)):
-        if assignment_1_scores[i] == 0 and assignment_2_scores[i] == 0:
-            if random.choice([True, False]):
-                assignment_1_scores[i] = random.randint(65, 98)
-                assignment_1_status[i] = "Completed"
-            else:
-                assignment_2_scores[i] = random.randint(65, 98)
-                assignment_2_status[i] = "Completed"
-
-    exam_status = ["Fit to Sit" if random.random() > 0.05 else "Absent" for _ in student_names]
-    exam_scores = [random.randint(55, 95) if status == "Fit to Sit" else 0 for status in exam_status]
-
-    students_with_penalties = random.sample(range(len(student_names)), min(8, len(student_names)))  
-    students_with_word_count = random.sample([i for i in range(len(student_names)) if i not in students_with_penalties], 3)
-
-    penalty_flags_1 = ["" for _ in student_names]
-    penalty_flags_2 = ["" for _ in student_names]
-
-    for i in students_with_penalties:
-        penalty_type = random.choice(["🚩 Academic Misconduct", "🚩 Exceptional Circumstances", "🚩 Lateness Penalty (-5%)"])
-        if random.random() < 0.5:  
-            penalty_flags_1[i] = penalty_type  
-        else:
-            penalty_flags_2[i] = penalty_type  
-
-    for i in students_with_word_count:
-        if penalty_flags_1[i] == "" and penalty_flags_2[i] == "":
-            if random.random() < 0.5:
-                penalty_flags_1[i] = "🚩 Word Count Penalty (-10%)"
-            else:
-                penalty_flags_2[i] = "🚩 Word Count Penalty (-10%)"
-
-    def calculate_final_grade(a1, a2, exam, p1, p2):
-        grade = (a1 * 0.25) + (a2 * 0.25) + (exam * 0.5)
-
-        if p1 == '🚩 Lateness Penalty (-5%)' or p2 == '🚩 Lateness Penalty (-5%)':
-            grade *= 0.95
-
-        if p1 == '🚩 Word Count Penalty (-10%)' or p2 == '🚩 Word Count Penalty (-10%)':
-            grade *= 0.9
-
-        return round(grade, 2)
-
-    final_grades = [calculate_final_grade(a1, a2, exam, p1, p2) 
-                    for a1, a2, exam, p1, p2 in zip(assignment_1_scores, assignment_2_scores,
-                                                    exam_scores, penalty_flags_1, penalty_flags_2)]
-
-    statuses = ["Enrolled"] * 45 + ["Deferred"] * 3 + ["Dropped"] * 2
-    random.shuffle(statuses)
-
-    df = pd.DataFrame({
-        "ID": student_ids,
-        "Student": student_names,
-        "Final Grade": final_grades,
-        "Attendance (%)": attendance_scores,
-        "Exam Status": exam_status,
-        "Exam Score": exam_scores,
-        "Assignment 1 (Bugs and Fixes)": assignment_1_scores,
-        "Assignment 1 Status": assignment_1_status,
-        "Assignment 1 Penalty": penalty_flags_1,
-        "Assignment 2 (Software Architecture)": assignment_2_scores,
-        "Assignment 2 Status": assignment_2_status,
-        "Assignment 2 Penalty": penalty_flags_2,
-        "Status": statuses
-    })
-
-    # ✅ Generate Excel Report
+    # ✅ Excel Export
     if file_type == "xlsx":
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Software Engineering Report"
+        ws.title = "Software Eng Dashboard"
 
         # ✅ Styling
         header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
-        border = Border(left=Side(style='thin'), right=Side(style='thin'), 
+        border = Border(left=Side(style='thin'), right=Side(style='thin'),
                         top=Side(style='thin'), bottom=Side(style='thin'))
 
-        ws.append(df.columns.tolist())
+        # ✅ Title
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(df.columns))
+        title_cell = ws.cell(row=1, column=1, value="Software Engineering Dashboard Report")
+        title_cell.font = Font(bold=True, size=14)
+        title_cell.alignment = Alignment(horizontal="center")
 
-        #✅ Apply styling to headers
+        # ✅ Headers
         for col_num, column_title in enumerate(df.columns, start=1):
-            cell = ws.cell(row=1, column=col_num, value=column_title)
+            cell = ws.cell(row=2, column=col_num, value=column_title)
             cell.fill = header_fill
             cell.border = border
+            cell.alignment = Alignment(horizontal="center")
 
-        #✅ Insert data
-        for row in df.itertuples(index=False):
-            ws.append(list(row))
+        # ✅ Data Rows
+        for row_idx, row in enumerate(df.itertuples(index=False), start=3):
+            for col_idx, value in enumerate(row, start=1):
+                cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                cell.border = border
 
-        # Prepare the Excel file for download
         with BytesIO() as b:
             wb.save(b)
             return b.getvalue()
 
-    #✅ Generate CSV Report
+    # ✅ CSV Export
     elif file_type == "csv":
-        csv_data = df.to_csv(index=False)
-        return csv_data.encode('utf-8')
+        return df.to_csv(index=False).encode("utf-8")
 
     return None
 
@@ -837,107 +786,51 @@ def download_csv_software_engineering_dashboard():
 def generate_data_science_report(file_type="excel"):
     file_path = f"data_science_dashboard.{file_type}"
 
-    # 📌 Sample Data from Data Science Dashboard
-    student_names = [
-        "Alex Carter", "Bella Sanders", "Cameron Hughes", "Diana Wright", "Ethan Parker",
-        "Felicity James", "Gabriel Lewis", "Hannah Stone", "Ian Turner", "Jasmine Collins",
-        "Kevin Morris", "Lara Watson", "Michael Griffin", "Natalie Cooper", "Owen Richardson",
-        "Paige Scott", "Quentin Ramirez", "Rebecca Bennett", "Stephen Howard", "Tracy Bell",
-        "Ulysses Barnes", "Victoria Foster", "Walter Henderson", "Xander Nelson", "Yvette Campbell",
-        "Zane Mitchell", "Amelia Ross", "Benjamin Ward", "Chloe Edwards", "David Fisher",
-        "Emma Butler", "Frederick Murphy", "Grace Price", "Henry Stewart", "Isabella Torres",
-        "Jackie Peterson", "Kurt Bailey", "Lucy Jenkins", "Mason Cooper", "Nina Adams",
-        "Oscar Flores", "Penelope Russell", "Ryan Powell", "Sophia Simmons", "Theodore White",
-        "Ursula Martin", "Vince Brown", "William Gonzales", "Xenia Moore", "Zoe Walker"
-    ]
+    # ✅ Get live data
+    df = get_processed_ds_data()
 
-    student_ids = [f"DS{random.randint(1000,9999)}" for _ in student_names]
-    attendance_scores = [random.randint(55, 100) if random.random() > 0.1 else random.randint(30, 49) for _ in student_names]
+    # ✅ Only include clean, export-friendly columns
+    df = df[[
+        "ID", "Student", "Final Grade", "Attendance", "Exam Status", "Exam Score",
+        "Assignment 1 (Data Analysis)", "Assignment 1 Status", "Assignment 1 Penalty",
+        "Assignment 2 (Machine Learning)", "Assignment 2 Status", "Assignment 2 Penalty",
+        "Status"
+    ]]
 
-    assignment_1_status = ["Completed"] * 48 + ["Not Completed"] * 2
-    random.shuffle(assignment_1_status)
-    assignment_2_status = ["Completed"] * 48 + ["Not Completed"] * 2
-    random.shuffle(assignment_2_status)
-
-    assignment_1_scores = [random.randint(50, 95) if status == "Completed" else 0 for status in assignment_1_status]
-    assignment_2_scores = [random.randint(50, 95) if status == "Completed" else 0 for status in assignment_2_status]
-
-    penalty_flags_1 = ["🚩 Academic Misconduct" if random.random() < 0.05 else
-                       "🚩 Exceptional Circumstances" if random.random() < 0.05 else
-                       "🚩 Lateness Penalty (-5%)" if random.random() < 0.1 else "" for _ in student_names]
-
-    penalty_flags_2 = ["🚩 Academic Misconduct" if random.random() < 0.05 else
-                       "🚩 Exceptional Circumstances" if random.random() < 0.05 else
-                       "🚩 Lateness Penalty (-5%)" if random.random() < 0.1 else "" for _ in student_names]
-
-    exam_status = ["Fit to Sit" if random.random() > 0.05 else "Absent" for _ in student_names]
-    exam_scores = [random.randint(50, 95) if status == "Fit to Sit" else 0 for status in exam_status]
-
-    def calculate_final_grade(a1, a2, exam, p1, p2):
-        grade = (a1 * 0.4) + (a2 * 0.3) + (exam * 0.3)
-        
-        if "Lateness Penalty" in p1:
-            grade -= a1 * 0.4 * 0.05
-        if "Lateness Penalty" in p2:
-            grade -= a2 * 0.3 * 0.05
-        
-        return round(max(grade, 0), 2)
-
-    final_grades = [calculate_final_grade(a1, a2, exam, p1, p2) 
-                    for a1, a2, exam, p1, p2 in zip(assignment_1_scores, assignment_2_scores,
-                                                    exam_scores, penalty_flags_1, penalty_flags_2)]
-
-    statuses = ["Enrolled"] * 45 + ["Deferred"] * 3 + ["Dropped"] * 2
-    random.shuffle(statuses)
-
-    df = pd.DataFrame({
-        "ID": student_ids,
-        "Student": student_names,
-        "Final Grade": final_grades,
-        "Attendance (%)": attendance_scores,
-        "Exam Status": exam_status,
-        "Exam Score": exam_scores,
-        "Assignment 1 (Data Analysis)": assignment_1_scores,
-        "Assignment 1 Status": assignment_1_status,
-        "Assignment 1 Penalty": penalty_flags_1,
-        "Assignment 2 (Machine Learning)": assignment_2_scores,
-        "Assignment 2 Status": assignment_2_status,
-        "Assignment 2 Penalty": penalty_flags_2,
-        "Status": statuses
-    })
-
-    # ✅ Generate Excel Report
     if file_type == "xlsx":
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Data Science Report"
+        ws.title = "Data Science Dashboard"
 
         # ✅ Styling
         header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
-        border = Border(left=Side(style='thin'), right=Side(style='thin'), 
+        border = Border(left=Side(style='thin'), right=Side(style='thin'),
                         top=Side(style='thin'), bottom=Side(style='thin'))
 
-        ws.append(df.columns.tolist())
+        # ✅ Title at top
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(df.columns))
+        title_cell = ws.cell(row=1, column=1, value="Data Science Dashboard Report")
+        title_cell.font = Font(bold=True, size=14)
+        title_cell.alignment = Alignment(horizontal="center")
 
-        # Apply styling to headers
+        # ✅ Headers
         for col_num, column_title in enumerate(df.columns, start=1):
-            cell = ws.cell(row=1, column=col_num, value=column_title)
+            cell = ws.cell(row=2, column=col_num, value=column_title)
             cell.fill = header_fill
             cell.border = border
+            cell.alignment = Alignment(horizontal="center")
 
-        # Insert data
-        for row in df.itertuples(index=False):
-            ws.append(list(row))
+        # ✅ Data
+        for row_idx, row in enumerate(df.itertuples(index=False), start=3):
+            for col_idx, value in enumerate(row, start=1):
+                ws.cell(row=row_idx, column=col_idx, value=value).border = border
 
-        # Prepare the Excel file for download
         with BytesIO() as b:
             wb.save(b)
             return b.getvalue()
 
-    # ✅ Generate CSV Report
     elif file_type == "csv":
-        csv_data = df.to_csv(index=False)
-        return csv_data.encode('utf-8')
+        return df.to_csv(index=False).encode("utf-8")
 
     return None
 
@@ -965,234 +858,151 @@ def download_csv_data_science_dashboard():
     )
 
 
+
 def generate_students_overview_report(file_type="xlsx"):
-    file_path = f"students_overview_dashboard.{file_type}"  # ✅ Match working filenames
+    try:
+        se_data = load_data("software_engineering.json")
+        ds_data = load_data("data_science.json")
 
-    # 📌 Sample Data from Students Overview Dashboard
-    data = {
-        "ID": [f"S{1000 + i}" for i in range(1, 21)],
-        "Student": [f"Student {i}" for i in range(1, 21)],
-        "Course": random.choices(["Software Engineering", "Data Science"], k=20),
-        "Final Grade (%)": [random.randint(50, 100) for _ in range(20)],
-        "Attendance (%)": [random.randint(60, 100) for _ in range(20)],
-        "Assignment 1 Score": [random.randint(50, 95) for _ in range(20)],
-        "Assignment 2 Score": [random.randint(50, 95) for _ in range(20)],
-        "Exam Score": [random.randint(50, 100) for _ in range(20)],
-        "Status": random.choices(["Enrolled", "Deferred", "Dropped"], k=20)
-    }
+        def flatten(data):
+            flat = []
+            for item in data:
+                if isinstance(item, list):
+                    flat.extend(item)
+                elif isinstance(item, dict):
+                    flat.append(item)
+            return flat
 
-    df = pd.DataFrame(data)
+        se_data = flatten(se_data)
+        ds_data = flatten(ds_data)
 
-    # ✅ Generate Excel Report
-    if file_type == "xlsx":
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Students Overview Report"
+    except Exception as e:
+        print("❌ Error loading data:", e)
+        return None
 
-        # ✅ Styling
-        header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
-        border = Border(left=Side(style='thin'), right=Side(style='thin'),
-                        top=Side(style='thin'), bottom=Side(style='thin'))
+    for row in se_data:
+        row["Course"] = "Software Engineering"
+    for row in ds_data:
+        row["Course"] = "Data Science"
 
-        ws.append(df.columns.tolist())
+    df_se = pd.DataFrame(se_data)
+    df_ds = pd.DataFrame(ds_data)
+    df = pd.concat([df_se, df_ds], ignore_index=True)
 
-        # Apply styling to headers
-        for col_num, column_title in enumerate(df.columns, start=1):
-            cell = ws.cell(row=1, column=col_num, value=column_title)
-            cell.fill = header_fill
-            cell.border = border
+    df.rename(columns={
+        "name": "Student",
+        "Final Grade": "Final Grade",
+        "Attendance": "Attendance",
+        "attendance": "Attendance",
+        "exam_score": "Exam Score",
+        "id": "ID"
+    }, inplace=True)
 
-        # Insert data
-        for row in df.itertuples(index=False):
-            ws.append(list(row))
+    for col in ["Final Grade", "Attendance", "Exam Score"]:
+        df[col] = pd.to_numeric(df.get(col, 0), errors="coerce").fillna(0)
 
-        # ✅ Save Excel File
-        wb.save(file_path)
-        return file_path
+    # === Calculated Tables ===
+    avg_grades = df.groupby("Course")["Final Grade"].mean().reset_index().rename(columns={"Final Grade": "Average Grade (%)"})
+    avg_attendance = df.groupby("Course")["Attendance"].mean().reset_index().rename(columns={"Attendance": "Average Attendance (%)"})
 
-    # ✅ Generate CSV Report
-    elif file_type == "csv":
-        df.to_csv(file_path, index=False)
-        return file_path
+    # ✅ At-risk = below 60
+    at_risk = df[df["Final Grade"] < 60][["Student", "Course", "Final Grade"]].rename(columns={"Final Grade": "Grade"})
 
-    return None  # If invalid file_type is provided
+    # ✅ Top 5 performers per course
+    top_se = df_se.sort_values("Final Grade", ascending=False).head(5)[["Student", "Course", "Final Grade"]]
+    top_ds = df_ds.sort_values("Final Grade", ascending=False).head(5)[["Student", "Course", "Final Grade"]]
+    top = pd.concat([top_se, top_ds]).rename(columns={"Final Grade": "Grade"})
 
-# ✅ Flask Routes to Export Students Overview Report
-def generate_students_overview_report(file_type="excel"):
-    # Sample data from the Students Overview Dashboard
-    software_engineering_data = [
-        ("Alice Johnson", 90.25), ("Bob Smith", 81.5), ("Charlie Davis", 77), ("David Martinez", 80.75),
-        ("Eve Brown", 84.75), ("Frank Wilson", 72), ("Grace Taylor", 91), ("Hank Anderson", 73),
-        ("Ivy Thomas", 93.25), ("Jack White", 76.5), ("Karen Harris", 68.5), ("Leo Martin", 84.75),
-        ("Mona Clark", 76.5), ("Nathan Lewis", 63.25), ("Olivia Hall", 76), ("Peter Allen", 84),
-        ("Quincy Young", 79.5), ("Rachel King", 91.5), ("Steve Wright", 85.5), ("Tina Scott", 74.75),
-        ("Uma Green", 71.55), ("Victor Adams", 76), ("Wendy Baker", 91), ("Xander Nelson", 79),
-        ("Yvonne Carter", 82.75), ("Zachary Mitchell", 75.6), ("Aaron Perez", 75.5), ("Bella Roberts", 81.25),
-        ("Cody Gonzalez", 72.91), ("Diana Campbell", 76.25), ("Ethan Rodriguez", 88), ("Fiona Moore", 76.05),
-        ("George Edwards", 78), ("Holly Flores", 77.75), ("Ian Cooper", 66), ("Julia Murphy", 70.25),
-        ("Kevin Reed", 81.75), ("Laura Cox", 85.5), ("Mike Ward", 83.75), ("Nina Peterson", 70),
-        ("Oscar Gray", 79.5), ("Paula Jenkins", 75.5), ("Quinn Russell", 81.5), ("Randy Torres", 92),
-        ("Samantha Stevens", 75.75), ("Tommy Parker", 79.75), ("Ursula Evans", 32.3), ("Vince Morgan", 86),
-        ("Whitney Bell", 74.25), ("Xavier Phillips", 70.5)
-    ]
-
-    data_science_data = [
-        ("Alex Carter", 65.3), ("Bella Sanders", 70.77), ("Cameron Hughes", 55.62), ("Diana Wright", 77.9),
-        ("Ethan Parker", 73.5), ("Felicity James", 67.7), ("Gabriel Lewis", 77.4), ("Hannah Stone", 60.1),
-        ("Ian Turner", 71.19), ("Jasmine Collins", 61.6), ("Kevin Morris", 91.3), ("Lara Watson", 70.7),
-        ("Michael Griffin", 71.9), ("Natalie Cooper", 56.8), ("Owen Richardson", 55.38), ("Paige Scott", 73.2),
-        ("Quentin Ramirez", 47.7), ("Rebecca Bennett", 65.44), ("Stephen Howard", 76.28), ("Tracy Bell", 76.8),
-        ("Ulysses Barnes", 68.3), ("Victoria Foster", 84.4), ("Walter Henderson", 72.8), ("Xander Nelson", 72.4),
-        ("Yvette Campbell", 70.2), ("Zane Mitchell", 72.4), ("Amelia Ross", 68.2), ("Benjamin Ward", 64.03),
-        ("Chloe Edwards", 72.9), ("David Fisher", 76.6), ("Emma Butler", 63.7), ("Frederick Murphy", 71.2),
-        ("Grace Price", 77), ("Henry Stewart", 67.5), ("Isabella Torres", 79.9), ("Jackie Peterson", 79.4),
-        ("Kurt Bailey", 65.6), ("Lucy Jenkins", 73.7), ("Mason Cooper", 46.5), ("Nina Adams", 73.5),
-        ("Oscar Flores", 43.7), ("Penelope Russell", 91.4), ("Ryan Powell", 67.1), ("Sophia Simmons", 70.27),
-        ("Theodore White", 67.7), ("Ursula Martin", 79.1), ("Vince Brown", 75.5), ("William Gonzales", 77.4),
-        ("Xenia Moore", 71.3), ("Zoe Walker", 56.4)
-    ]
-
-    # Create DataFrames
-    df_se = pd.DataFrame(software_engineering_data, columns=['Student', 'Grade'])
-    df_se['Course'] = 'Software Engineering'
-    df_ds = pd.DataFrame(data_science_data, columns=['Student', 'Grade'])
-    df_ds['Course'] = 'Data Science'
-
-    # Combine DataFrames
-    df_combined = pd.concat([df_se, df_ds])
-
-    # Calculate average grades and attendance
-    avg_grades = df_combined.groupby('Course')['Grade'].mean().reset_index()
-    avg_attendance = pd.DataFrame({
-        "Course": ["Software Engineering", "Data Science"],
-        "Attendance": [78.5, 74.8]
-    })
-
-    # Calculate grade distribution
-    def categorize_grade(grade):
-        if grade >= 70:
-            return '100-70%'
-        elif grade >= 60:
-            return '70-60%'
-        elif grade >= 50:
-            return '60-50%'
+    # ✅ Grade Distribution Table
+    def get_grade_band(score):
+        if score >= 70:
+            return "100-70%"
+        elif score >= 60:
+            return "70-60%"
+        elif score >= 50:
+            return "60-50%"
         else:
-            return '50-40%'
+            return "50-40%"
 
-    df_combined['Grade Range'] = df_combined['Grade'].apply(categorize_grade)
-    grade_distribution = df_combined.groupby(['Course', 'Grade Range']).size().unstack(fill_value=0)
+    df["Grade Range"] = df["Final Grade"].apply(get_grade_band)
+    grade_dist = df.groupby(["Course", "Grade Range"]).size().reset_index(name="Count")
 
-    # Performance comparison data
+    # ✅ Mocked Performance Comparison (adjust if dynamic later)
     performance_comparison = pd.DataFrame({
         "Metric": ["Assignments", "Exams"],
         "Software Engineering": [78, 85],
         "Data Science": [74, 82]
     })
 
-    # Calculate top performing and at-risk students
-    def get_top_and_at_risk(data, course):
-        sorted_data = sorted(data, key=lambda x: x[1], reverse=True)
-        top_performing = [{"Student": s[0], "Course": course, "Grade": s[1]} for s in sorted_data[:5]]
-        at_risk = [{"Student": s[0], "Course": course, "Grade": s[1]} for s in sorted_data if s[1] < 60]
-        return top_performing, at_risk
-
-    top_performing_se, at_risk_se = get_top_and_at_risk(software_engineering_data, "Software Engineering")
-    top_performing_ds, at_risk_ds = get_top_and_at_risk(data_science_data, "Data Science")
-
-    # Generate report
+    # === Excel Export ===
     if file_type == "xlsx":
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Students Overview Report"
+        ws.title = "Students Overview"
 
-        # Styling
-        header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
-        border = Border(left=Side(style='thin'), right=Side(style='thin'), 
-                        top=Side(style='thin'), bottom=Side(style='thin'))
+        title_font = Font(size=14, bold=True)
+        header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+        border = Border(left=Side(style="thin"), right=Side(style="thin"),
+                        top=Side(style="thin"), bottom=Side(style="thin"))
 
-        # Write average grades
-        ws.append(["Average Grades"])
-        ws.append(["Course", "Average Grade"])
-        for _, row in avg_grades.iterrows():
-            ws.append([row['Course'], row['Grade']])
+        def write_table(start_row, start_col, title, df_table):
+            col_offset = start_col
+            row = start_row
+            ws.merge_cells(start_row=row, start_column=col_offset, end_row=row, end_column=col_offset + len(df_table.columns) - 1)
+            title_cell = ws.cell(row=row, column=col_offset, value=title)
+            title_cell.font = Font(bold=True)
+            row += 1
 
-        # Write average attendance
-        ws.append([])
-        ws.append(["Average Attendance"])
-        ws.append(["Course", "Attendance"])
-        for _, row in avg_attendance.iterrows():
-            ws.append([row['Course'], row['Attendance']])
-
-        # Write grade distribution
-        ws.append([])
-        ws.append(["Grade Distribution"])
-        ws.append(["Course"] + list(grade_distribution.columns))
-        for course, row in grade_distribution.iterrows():
-            ws.append([course] + list(row))
-
-        # Write performance comparison
-        ws.append([])
-        ws.append(["Performance Comparison"])
-        ws.append(["Metric", "Software Engineering", "Data Science"])
-        for _, row in performance_comparison.iterrows():
-            ws.append([row['Metric'], row['Software Engineering'], row['Data Science']])
-
-        # Write top performing students
-        ws.append([])
-        ws.append(["Top Performing Students"])
-        ws.append(["Student", "Course", "Grade"])
-        for student in top_performing_se + top_performing_ds:
-            ws.append([student['Student'], student['Course'], student['Grade']])
-
-        # Write at-risk students
-        ws.append([])
-        ws.append(["At-Risk Students"])
-        ws.append(["Student", "Course", "Grade"])
-        for student in at_risk_se + at_risk_ds:
-            ws.append([student['Student'], student['Course'], student['Grade']])
-
-        # Apply styling
-        for row in ws[1:ws.max_row]:
-            for cell in row:
+            for col_idx, header in enumerate(df_table.columns, start=col_offset):
+                cell = ws.cell(row=row, column=col_idx, value=header)
+                cell.fill = header_fill
+                cell.font = Font(bold=True)
                 cell.border = border
 
-        for row in ws[1:ws.max_row:len(avg_grades)+1]:
-            for cell in row:
-                cell.fill = header_fill
+            for _, record in df_table.iterrows():
+                row += 1
+                for col_idx, value in enumerate(record, start=col_offset):
+                    cell = ws.cell(row=row, column=col_idx, value=value)
+                    cell.border = border
 
-        # Prepare the Excel file for download
+            return row + 2
+
+        # === Report Layout ===
+        row = 2
+        row = write_table(row, 2, "📊 Average Grade per Course", avg_grades)
+        row = write_table(row, 2, "📉 Average Attendance per Course", avg_attendance)
+        row = write_table(row, 2, "📈 Grade Distribution by Course", grade_dist)
+        row = write_table(row, 2, "📋 Performance Comparison (Assignments vs Exams)", performance_comparison)
+        row = write_table(row, 2, "🚨 At-Risk Students", at_risk)
+        row = write_table(row, 2, "🌟 Top Performing Students", top)
+
+        # ✅ Auto-fit columns
+        for col_idx in range(1, ws.max_column + 1):
+            max_len = 0
+            for cell in ws[get_column_letter(col_idx)]:
+                if cell.value:
+                    max_len = max(max_len, len(str(cell.value)))
+            ws.column_dimensions[get_column_letter(col_idx)].width = max_len + 3
+
         with BytesIO() as b:
             wb.save(b)
             return b.getvalue()
 
-    # Generate CSV Report
+    # === CSV Export ===
     elif file_type == "csv":
         with BytesIO() as b:
-            b.write(b"Students Overview Report\n\n")
-            
-            b.write(b"Average Grades\n")
-            avg_grades.to_csv(b, index=False)
-            b.write(b"\n")
-            
-            b.write(b"Average Attendance\n")
-            avg_attendance.to_csv(b, index=False)
-            b.write(b"\n")
-            
-            b.write(b"Grade Distribution\n")
-            grade_distribution.to_csv(b)
-            b.write(b"\n")
-            
-            b.write(b"Performance Comparison\n")
-            performance_comparison.to_csv(b, index=False)
-            b.write(b"\n")
-            
-            b.write(b"Top Performing Students\n")
-            pd.DataFrame(top_performing_se + top_performing_ds).to_csv(b, index=False)
-            b.write(b"\n")
-            
-            b.write(b"At-Risk Students\n")
-            pd.DataFrame(at_risk_se + at_risk_ds).to_csv(b, index=False)
-            
+            def write_section(title, df_table):
+                b.write((title + "\n").encode())
+                df_table.to_csv(b, index=False)
+                b.write(b"\n\n")
+
+            write_section("📊 Average Grade per Course", avg_grades)
+            write_section("📉 Average Attendance per Course", avg_attendance)
+            write_section("📈 Grade Distribution by Course", grade_dist)
+            write_section("📋 Performance Comparison", performance_comparison)
+            write_section("🚨 At-Risk Students", at_risk)
+            write_section("🌟 Top Performing Students", top)
+
             return b.getvalue()
 
     return None
@@ -1220,91 +1030,102 @@ def download_csv_students_overview_dashboard():
     )
 
 
-# Export Student Attendance Insights Report (Renamed to avoid conflict)
-def generate_student_attendance_insights_report(file_type="excel"):
-    file_path = f"student_attendance_insights.{file_type}"
 
-    # 📌 Sample Data (Replace with actual data retrieval from your dashboard)
-    se_students = [
-        ("SE6352", "Alice Johnson", 95), ("SE8934", "Bob Smith", 91), ("SE6281", "Charlie Davis", 98),
-        ("SE7925", "David Martinez", 84), ("SE6726", "Eve Brown", 64), ("SE1122", "Frank Wilson", 76),
-        ("SE9571", "Grace Taylor", 65), ("SE3929", "Hank Anderson", 83), ("SE7971", "Ivy Thomas", 84),
-        ("SE5495", "Jack White", 78), ("SE8563", "Karen Harris", 80), ("SE3882", "Leo Martin", 73),
-        ("SE4819", "Mona Clark", 99), ("SE9943", "Nathan Lewis", 71), ("SE3065", "Olivia Hall", 92),
-        ("SE8912", "Peter Allen", 57), ("SE9568", "Quincy Young", 90), ("SE7547", "Rachel King", 100),
-        ("SE3979", "Steve Wright", 92), ("SE5835", "Tina Scott", 63), ("SE8744", "Uma Green", 85),
-        ("SE7255", "Victor Adams", 83), ("SE5697", "Wendy Baker", 92), ("SE4181", "Xander Nelson", 93),
-        ("SE4762", "Yvonne Carter", 87), ("SE5070", "Zachary Mitchell", 81), ("SE8734", "Aaron Perez", 97),
-        ("SE2053", "Bella Roberts", 92), ("SE8111", "Cody Gonzalez", 89), ("SE9150", "Diana Campbell", 80),
-        ("SE3215", "Ethan Rodriguez", 50), ("SE5869", "Fiona Moore", 54), ("SE6168", "George Edwards", 87),
-        ("SE8238", "Holly Flores", 71), ("SE3932", "Ian Cooper", 92), ("SE7659", "Julia Murphy", 89),
-        ("SE4522", "Kevin Reed", 99), ("SE9236", "Laura Cox", 78), ("SE1428", "Mike Ward", 99),
-        ("SE8043", "Nina Peterson", 79), ("SE7543", "Oscar Gray", 96), ("SE3569", "Paula Jenkins", 99),
-        ("SE3900", "Quinn Russell", 75), ("SE8183", "Randy Torres", 94), ("SE3509", "Samantha Stevens", 65),
-        ("SE1763", "Tommy Parker", 82), ("SE9793", "Ursula Evans", 85), ("SE5731", "Vince Morgan", 82),
-        ("SE9781", "Whitney Bell", 81), ("SE2024", "Xavier Phillips", 75)
+def generate_student_attendance_insights_report(file_type="xlsx"):
+    # === Load data ===
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DATA_DIR = os.path.join(BASE_DIR, "data")
+
+    def load_json(filepath):
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        flat = []
+        for entry in data:
+            if isinstance(entry, list):
+                flat.extend(entry)
+            else:
+                flat.append(entry)
+        return [(s["ID"], s["Student"], s["Attendance"]) for s in flat]
+
+    se_students = load_json(os.path.join(DATA_DIR, "software_engineering.json"))
+    ds_students = load_json(os.path.join(DATA_DIR, "data_science.json"))
+
+    se_lectures = [
+        "Application Software", "Databases", "Operating Systems", "Networking",
+        "Cybersecurity", "Cloud Computing", "Software Testing", "Artificial Intelligence",
+        "Machine Learning", "Web Development", "Mobile Development", "DevOps"
     ]
-
-    ds_students = [
-        ("DS1012", "Alex Carter", 71), ("DS4772", "Bella Sanders", 30), ("DS5732", "Cameron Hughes", 72),
-        ("DS7477", "Diana Wright", 97), ("DS7861", "Ethan Parker", 61), ("DS9221", "Felicity James", 57),
-        ("DS7221", "Gabriel Lewis", 91), ("DS6154", "Hannah Stone", 62), ("DS1486", "Ian Turner", 82),
-        ("DS3966", "Jasmine Collins", 58), ("DS1166", "Kevin Morris", 90), ("DS6217", "Lara Watson", 84),
-        ("DS6534", "Michael Griffin", 96), ("DS7280", "Natalie Cooper", 81), ("DS1929", "Owen Richardson", 66),
-        ("DS8704", "Paige Scott", 68), ("DS5134", "Quentin Ramirez", 62), ("DS6980", "Rebecca Bennett", 92),
-        ("DS3986", "Stephen Howard", 57), ("DS7376", "Tracy Bell", 82), ("DS6091", "Ulysses Barnes", 96),
-        ("DS4026", "Victoria Foster", 94), ("DS4819", "Walter Henderson", 75), ("DS9065", "Xander Nelson", 84),
-        ("DS9746", "Yvette Campbell", 57), ("DS3253", "Zane Mitchell", 58), ("DS6503", "Amelia Ross", 60),
-        ("DS2850", "Benjamin Ward", 61), ("DS4513", "Chloe Edwards", 94), ("DS5015", "David Fisher", 59),
-        ("DS3479", "Emma Butler", 60), ("DS7297", "Frederick Murphy", 57), ("DS7372", "Grace Price", 80),
-        ("DS9041", "Henry Stewart", 93), ("DS6180", "Isabella Torres", 68), ("DS7380", "Jackie Peterson", 81),
-        ("DS2398", "Kurt Bailey", 97), ("DS6589", "Lucy Jenkins", 84), ("DS2762", "Mason Cooper", 100),
-        ("DS5804", "Nina Adams", 90), ("DS5362", "Oscar Flores", 83), ("DS5197", "Penelope Russell", 70),
-        ("DS4441", "Ryan Powell", 71), ("DS8748", "Sophia Simmons", 72), ("DS8533", "Theodore White", 79),
-        ("DS7065", "Ursula Martin", 73), ("DS3499", "Vince Brown", 71), ("DS5325", "William Gonzales", 85),
-        ("DS7707", "Xenia Moore", 88), ("DS3801", "Zoe Walker", 73)
+    ds_lectures = [
+        "Data Wrangling", "Big Data", "Data Visualization", "Statistics",
+        "Machine Learning", "Deep Learning", "NLP", "AI Ethics",
+        "Reinforcement Learning", "Cloud Computing for AI", "Model Deployment", "Data Science Projects"
     ]
+    se_weeks = [f"Week {i+1} ({se_lectures[i]})" for i in range(12)]
+    ds_weeks = [f"Week {i+1} ({ds_lectures[i]})" for i in range(12)]
 
-    # Combine SE and DS students
-    all_students = se_students + ds_students
+    # === Simulate weekly attendance per student ===
+    def simulate_weekly_attendance(students, week_labels):
+        total_weeks = len(week_labels)
+        rows = []
+        for student_id, student_name, overall_attendance in students:
+            attended_weeks_count = round((overall_attendance / 100) * total_weeks)
+            attended_indices = sorted(random.sample(range(total_weeks), attended_weeks_count))
+            weekly = [100 if i in attended_indices else 0 for i in range(total_weeks)]
+            rows.append([student_id, student_name] + weekly)
+        columns = ["Student ID", "Student Name"] + week_labels
+        return pd.DataFrame(rows, columns=columns)
 
-    # Create a DataFrame
-    df = pd.DataFrame(all_students, columns=['Student ID', 'Student Name', 'Attendance %'])
+    df_se = simulate_weekly_attendance(se_students, se_weeks)
+    df_ds = simulate_weekly_attendance(ds_students, ds_weeks)
 
-    # ✅ Generate Excel Report
-    if file_type == "xlsx":
+    # === Export CSV ===
+    if file_type == "csv":
+        with BytesIO() as b:
+            b.write(b"Software Engineering\n")
+            df_se.to_csv(b, index=False)
+            b.write(b"\n\nData Science\n")
+            df_ds.to_csv(b, index=False)
+            return b.getvalue()
+
+    # === Export Excel ===
+    elif file_type == "xlsx":
         wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Student Attendance Insights"
+        ws_se = wb.active
+        ws_se.title = "Software Engineering"
+        ws_ds = wb.create_sheet("Data Science")
 
-        # ✅ Styling
-        header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
-        border = Border(left=Side(style='thin'), right=Side(style='thin'), 
-                        top=Side(style='thin'), bottom=Side(style='thin'))
+        def write_df_to_sheet(ws, df):
+            header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+            border = Border(left=Side(style='thin'), right=Side(style='thin'),
+                            top=Side(style='thin'), bottom=Side(style='thin'))
 
-        ws.append(df.columns.tolist())
+            # Header row
+            for col_num, col_name in enumerate(df.columns, start=1):
+                cell = ws.cell(row=1, column=col_num, value=col_name)
+                cell.fill = header_fill
+                cell.font = Font(bold=True)
+                cell.border = border
 
-        # ✅ Apply styling to headers
-        for col_num, column_title in enumerate(df.columns, start=1):
-            cell = ws.cell(row=1, column=col_num, value=column_title)
-            cell.fill = header_fill
-            cell.border = border
+            # Data rows
+            for row_idx, row_data in enumerate(df.itertuples(index=False), start=2):
+                for col_idx, value in enumerate(row_data, start=1):
+                    cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                    cell.border = border
 
-        # Insert data
-        for row in df.itertuples(index=False):
-            ws.append(list(row))
+            # Auto-width
+            for col in ws.columns:
+                max_len = max(len(str(cell.value)) if cell.value else 0 for cell in col)
+                ws.column_dimensions[col[0].column_letter].width = max_len + 2
 
-        # ✅ Save Excel File
-        wb.save(file_path)
-        return file_path
+        write_df_to_sheet(ws_se, df_se)
+        write_df_to_sheet(ws_ds, df_ds)
 
-    # ✅ Generate CSV Report
-    elif file_type == "csv":
-        df.to_csv(file_path, index=False)
-        return file_path
+        b = BytesIO()
+        wb.save(b)
+        b.seek(0)
+        return b.getvalue()
 
-    return None  # ✅ If invalid file_type is provided
-
+    return None
 
 @app.route('/download_excel_student_attendance_insights_renamed')  # 📌 Changed route name
 @login_required

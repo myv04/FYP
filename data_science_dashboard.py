@@ -4,7 +4,10 @@ from dash import dcc, html, dash_table
 from dash.dependencies import Input, Output, State
 import plotly.express as px
 import pandas as pd
-import random
+from course_data import data_science_students
+from data_persistence import save_data, load_data
+
+
 
 data_science_dashboard = Blueprint("data_science_dashboard", __name__)
 
@@ -16,86 +19,52 @@ def init_data_science_dashboard(flask_app):
         suppress_callback_exceptions=True
     )
 
-    student_names = [
-        "Alex Carter", "Bella Sanders", "Cameron Hughes", "Diana Wright", "Ethan Parker",
-        "Felicity James", "Gabriel Lewis", "Hannah Stone", "Ian Turner", "Jasmine Collins",
-        "Kevin Morris", "Lara Watson", "Michael Griffin", "Natalie Cooper", "Owen Richardson",
-        "Paige Scott", "Quentin Ramirez", "Rebecca Bennett", "Stephen Howard", "Tracy Bell",
-        "Ulysses Barnes", "Victoria Foster", "Walter Henderson", "Xander Nelson", "Yvette Campbell",
-        "Zane Mitchell", "Amelia Ross", "Benjamin Ward", "Chloe Edwards", "David Fisher",
-        "Emma Butler", "Frederick Murphy", "Grace Price", "Henry Stewart", "Isabella Torres",
-        "Jackie Peterson", "Kurt Bailey", "Lucy Jenkins", "Mason Cooper", "Nina Adams",
-        "Oscar Flores", "Penelope Russell", "Ryan Powell", "Sophia Simmons", "Theodore White",
-        "Ursula Martin", "Vince Brown", "William Gonzales", "Xenia Moore", "Zoe Walker"
-    ]
-
-    student_ids = [f"DS{random.randint(1000,9999)}" for _ in student_names]
-    attendance_scores = [random.randint(55, 100) if random.random() > 0.1 else random.randint(30, 49) for _ in student_names]
-
-    assignment_1_status = ["Completed"] * 48 + ["Not Completed"] * 2
-    random.shuffle(assignment_1_status)
-    assignment_2_status = ["Completed"] * 48 + ["Not Completed"] * 2
-    random.shuffle(assignment_2_status)
-
-    assignment_1_scores = [random.randint(50, 95) if status == "Completed" else 0 for status in assignment_1_status]
-    assignment_2_scores = [random.randint(50, 95) if status == "Completed" else 0 for status in assignment_2_status]
-
-    penalty_flags_1 = ["🚩 Academic Misconduct" if random.random() < 0.05 else
-                       "🚩 Exceptional Circumstances" if random.random() < 0.05 else
-                       "🚩 Lateness Penalty (-5%)" if random.random() < 0.1 else "" for _ in student_names]
-
-    penalty_flags_2 = ["🚩 Academic Misconduct" if random.random() < 0.05 else
-                       "🚩 Exceptional Circumstances" if random.random() < 0.05 else
-                       "🚩 Lateness Penalty (-5%)" if random.random() < 0.1 else "" for _ in student_names]
-
-    exam_status = ["Fit to Sit" if random.random() > 0.05 else "Absent" for _ in student_names]
-    exam_scores = [random.randint(50, 95) if status == "Fit to Sit" else 0 for status in exam_status]
+    df = pd.DataFrame(data_science_students)
 
     def calculate_final_grade(a1, a2, exam, p1, p2):
         grade = (a1 * 0.4) + (a2 * 0.3) + (exam * 0.3)
-        
         if "Lateness Penalty" in p1:
             grade -= a1 * 0.4 * 0.05
         if "Lateness Penalty" in p2:
             grade -= a2 * 0.3 * 0.05
-        
         return round(max(grade, 0), 2)
 
-    final_grades = [calculate_final_grade(a1, a2, exam, p1, p2) 
-                    for a1, a2, exam, p1, p2 in zip(assignment_1_scores, assignment_2_scores,
-                                                    exam_scores, penalty_flags_1, penalty_flags_2)]
+    df["Final Grade"] = df.apply(lambda row: calculate_final_grade(
+        row["a1_score"], row["a2_score"], row["exam_score"], row["a1_penalty"], row["a2_penalty"]
+    ), axis=1)
 
-    statuses = ["Enrolled"] * 45 + ["Deferred"] * 3 + ["Dropped"] * 2
-    random.shuffle(statuses)
+    df["Student"] = df["name"]
+    df["ID"] = df["id"]
+    df["Attendance (%)"] = df["attendance"]
+    df["Exam Status"] = df["exam_status"]
+    df["Exam Score"] = df["exam_score"]
+    df["Assignment 1 (Data Analysis)"] = df["a1_score"]
+    df["Assignment 1 Status"] = df["a1_status"]
+    df["Assignment 1 Penalty"] = df["a1_penalty"]
+    df["Assignment 2 (Machine Learning)"] = df["a2_score"]
+    df["Assignment 2 Status"] = df["a2_status"]
+    df["Assignment 2 Penalty"] = df["a2_penalty"]
+    df["Status"] = df["status"]
 
-    df = pd.DataFrame({
-        "ID": student_ids,
-        "Student": student_names,
-        "Final Grade": final_grades,
-        "Attendance (%)": attendance_scores,
-        "Exam Status": exam_status,
-        "Exam Score": exam_scores,
-        "Assignment 1 (Data Analysis)": assignment_1_scores,
-        "Assignment 1 Status": assignment_1_status,
-        "Assignment 1 Penalty": penalty_flags_1,
-        "Assignment 2 (Machine Learning)": assignment_2_scores,
-        "Assignment 2 Status": assignment_2_status,
-        "Assignment 2 Penalty": penalty_flags_2,
-        "Status": statuses
-    })
+    desired_columns = [
+        "ID", "Student", "Final Grade", "Attendance (%)", "Exam Status", "Exam Score",
+        "Assignment 1 (Data Analysis)", "Assignment 1 Status", "Assignment 1 Penalty",
+        "Assignment 2 (Machine Learning)", "Assignment 2 Status", "Assignment 2 Penalty", "Status"
+    ]
+    df = df[desired_columns]
 
     fig_grades = px.bar(df, x="Student", y="Final Grade", title="📊 Data Science - Student Grades",
                         labels={"Final Grade": "Grade (%)"}, color="Final Grade", color_continuous_scale="Greens")
-    fig_grades.update_layout(xaxis={'categoryorder':'total descending'})
+    fig_grades.update_layout(xaxis={'categoryorder': 'total descending'})
 
     attendance_fig = px.pie(
         names=["100-90%", "90-80%", "80-70%", "70-60%", "<60%"],
         values=[
-            sum(90 <= x <= 100 for x in attendance_scores),
-            sum(80 <= x < 90 for x in attendance_scores),
-            sum(70 <= x < 80 for x in attendance_scores),
-            sum(60 <= x < 70 for x in attendance_scores),
-            sum(x < 60 for x in attendance_scores),
+            sum(90 <= x <= 100 for x in df["Attendance (%)"]),
+            sum(80 <= x < 90 for x in df["Attendance (%)"]),
+            sum(70 <= x < 80 for x in df["Attendance (%)"]),
+            sum(60 <= x < 70 for x in df["Attendance (%)"]),
+            sum(x < 60 for x in df["Attendance (%)"]),
         ],
         title="📌 Attendance Breakdown",
         hole=0.4
@@ -103,7 +72,7 @@ def init_data_science_dashboard(flask_app):
 
     exam_fig = px.bar(df, x="Student", y="Exam Score", title="📝 Exam Scores",
                       labels={"Exam Score": "Score (%)"}, color="Exam Score", color_continuous_scale="Reds")
-    exam_fig.update_layout(xaxis={'categoryorder':'total descending'})
+    exam_fig.update_layout(xaxis={'categoryorder': 'total descending'})
 
     dash_app.layout = html.Div(children=[
         html.H1("📊 Data Science - Performance & Grades", style={"textAlign": "center"}),
@@ -133,7 +102,7 @@ def init_data_science_dashboard(flask_app):
         ], style={"textAlign": "center", "margin-bottom": "10px"}),
         dash_table.DataTable(
             id="data-table",
-            columns=[{"name": i, "id": i, "editable": False} for i in df.columns],
+            columns=[{"name": col, "id": col, "editable": False} for col in desired_columns],
             data=df.to_dict("records"),
             sort_action="native",
             style_table={"margin": "auto", "width": "90%"},
@@ -150,7 +119,7 @@ def init_data_science_dashboard(flask_app):
     def update_assignment_chart(selected_assignment):
         fig = px.bar(df, x="Student", y=selected_assignment, title=f"📑 {selected_assignment}",
                      labels={selected_assignment: "Score (%)"}, color=selected_assignment, color_continuous_scale="Oranges")
-        fig.update_layout(xaxis={'categoryorder':'total descending'})
+        fig.update_layout(xaxis={'categoryorder': 'total descending'})
         return fig
 
     @dash_app.callback(
@@ -168,24 +137,17 @@ def init_data_science_dashboard(flask_app):
         triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
         if triggered_id == 'edit-button':
-            if edit_clicks % 2 == 1:  # Odd clicks: enable editing
-                cols = [{"name": i['name'], "id": i['id'], "editable": True} for i in existing_columns]
-                return (cols,
-                        {'display': 'inline-block', 'marginRight': '10px'},
-                        {'display': 'inline-block'},
-                        {'display': 'none'})  # Hide Edit, Show Confirm/Discard
-            else:  # Even clicks: disable editing
-                cols = [{"name": i['name'], "id": i['id'], "editable": False} for i in existing_columns]
-                return (cols,
-                        {'display': 'none', 'marginRight': '10px'},
-                        {'display': 'none'},
-                        {'display': 'inline-block'})  # Show Edit, Hide Confirm/Discard
-        else:  # triggered by Confirm or Discard
+            cols = [{"name": i['name'], "id": i['id'], "editable": True} for i in existing_columns]
+            return (cols,
+                    {'display': 'inline-block', 'marginRight': '10px'},
+                    {'display': 'inline-block'},
+                    {'display': 'none'})
+        else:
             cols = [{"name": i['name'], "id": i['id'], "editable": False} for i in existing_columns]
             return (cols,
                     {'display': 'none', 'marginRight': '10px'},
                     {'display': 'none'},
-                    {'display': 'inline-block'})  # Show Edit, Hide Confirm/Discard
+                    {'display': 'inline-block'})
 
     @dash_app.callback(
         Output("data-table", "data"),
@@ -199,17 +161,15 @@ def init_data_science_dashboard(flask_app):
         triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
         if triggered_id == "confirm-button":
-            df = pd.DataFrame(current_data)
-            df['Final Grade'] = df.apply(lambda row: calculate_final_grade(
+            df_new = pd.DataFrame(current_data)
+            df_new['Final Grade'] = df_new.apply(lambda row: calculate_final_grade(
                 float(row['Assignment 1 (Data Analysis)']),
                 float(row['Assignment 2 (Machine Learning)']),
                 float(row['Exam Score']),
                 row['Assignment 1 Penalty'],
                 row['Assignment 2 Penalty']
             ), axis=1)
-            return df.to_dict('records')
+            return df_new.to_dict('records')
         elif triggered_id == "discard-button":
             return initial_data
         return current_data
-
-    return dash_app

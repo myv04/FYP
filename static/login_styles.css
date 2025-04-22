@@ -3,78 +3,172 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-}
-
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f0f4f8;
+  }
+  
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #dbe9f4, #c9d6ff);
     height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     color: #333;
-}
-
-.login-container {
-    background-color: #ffffff;
-    padding: 60px 50px; /* Increased padding for the box */
-    border-radius: 10px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* Larger shadow for a modern look */
-    width: 400px; /* Increased width for bigger input fields */
-    text-align: center;
-}
-
-h2 {
-    color: #333;
-    margin-bottom: 40px; /* Increased space below the header */
-    font-size: 36px; /* Increased font size for the header */
-}
-
-input, button {
-    display: block;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  #particles-js {
+    position: absolute;
     width: 100%;
-    padding: 18px; /* Increased padding for the inputs */
-    margin: 15px 0; /* Increased margin between fields */
-    border: 1px solid #ddd;
+    height: 100%;
+    z-index: 0;
+    top: 0;
+    left: 0;
+  }
+  
+  .animate-slide {
+    animation: slideIn 1s ease-out;
+  }
+  
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .login-wrapper {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 440px;
+    padding: 20px;
+  }
+  
+  .login-container {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
+    padding: 45px 40px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    text-align: center;
+    animation: fadeInUp 0.6s ease forwards;
+  }
+  
+  .logo {
+    font-size: 48px;
+    margin-bottom: 10px;
+  }
+  
+  .login-container h2 {
+    font-size: 28px;
+    color: #1d3557;
+    margin-bottom: 8px;
+  }
+  
+  .subtitle {
+    font-size: 15px;
+    color: #6c757d;
+    margin-bottom: 25px;
+  }
+  
+  .floating-group {
+    position: relative;
+    margin-bottom: 20px;
+  }
+  
+  .floating-group input {
+    width: 100%;
+    padding: 14px 12px;
+    font-size: 16px;
+    background: transparent;
+    border: 1px solid #ccc;
     border-radius: 8px;
-    font-size: 18px; /* Increased font size for input fields */
-    background-color: #f9f9f9;
     color: #333;
-}
-
-input:focus, button:focus {
     outline: none;
-    border-color: #007bff;
-}
-
-button {
-    background-color: #007bff;
+  }
+  
+  .floating-group input:focus {
+    border-color: #5b6ee1;
+    box-shadow: 0 0 0 3px rgba(91, 110, 225, 0.3);
+  }
+  
+  .floating-group label {
+    position: absolute;
+    left: 12px;
+    top: 14px;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 0 6px;
+    font-size: 14px;
+    color: #888;
+    transition: 0.2s;
+    pointer-events: none;
+  }
+  
+  .floating-group input:focus + label,
+  .floating-group input:not(:placeholder-shown) + label {
+    top: -8px;
+    left: 10px;
+    font-size: 12px;
+    color: #5b6ee1;
+  }
+  
+  button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #5b6ee1, #8693f0);
     color: white;
     cursor: pointer;
-    transition: background-color 0.3s ease;
-    font-size: 18px; /* Increased font size for the button */
-}
-
-button:hover {
-    background-color: #0056b3;
-}
-
-.flash {
-    padding: 10px;
-    margin: 10px 0;
-    border-radius: 6px;
-    width: 100%;
-    text-align: center;
-}
-
-.flash.success {
+    transition: 0.3s ease;
+  }
+  
+  button:hover {
+    background: linear-gradient(135deg, #4a59c6, #6b78e5);
+    transform: translateY(-2px);
+  }
+  
+  .flash {
+    padding: 12px;
+    margin-top: 20px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  
+  .flash.success {
     background-color: #d4edda;
     color: #155724;
     border: 1px solid #c3e6cb;
-}
-
-.flash.danger {
+  }
+  
+  .flash.danger {
     background-color: #f8d7da;
     color: #721c24;
     border: 1px solid #f5c6cb;
-}
+  }
+  
+  .flash.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+  }
+  
+  @keyframes fadeInUp {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  

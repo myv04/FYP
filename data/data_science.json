@@ -1,0 +1,469 @@
+[
+    {
+      "ID": "DS6846",
+      "Student": "Alex Carter",
+      "Final Grade": 72.2,
+      "Attendance": 76,
+      "Exam Status": "Fit to Sit",
+      "Exam Score": 81,
+      "Assignment 1": 59,
+      "Assignment 1 Status": "Completed",
+      "Assignment 1 Penalty": "",
+      "Assignment 2": 81
+    },
+    {
+      "ID": "DS6478",
+      "Student": "Bella Sanders",
+      "Final Grade": 62.1,
+      "Attendance": 98,
+      "Exam Status": "Fit to Sit",
+      "Exam Score": 53,
+      "Assignment 1": 78,
+      "Assignment 1 Status": "Completed",
+      "Assignment 1 Penalty": "",
+      "Assignment 2": 50
+    },
+    {
+      "ID": "DS1813",
+      "Student": "Cameron Hughes",
+      "Final Grade": 73,
+      "Attendance": 60,
+      "Exam Status": "Fit to Sit",
+      "Exam Score": 52,
+      "Assignment 1": 85,
+      "Assignment 1 Status": "Completed",
+      "Assignment 1 Penalty": "",
+      "Assignment 2": 78
+    },
+    {
+      "ID": "DS9754",
+      "Student": "Diana Wright",
+      "Final Grade": 74.9,
+      "Attendance": 39,
+      "Exam Status": "Fit to Sit",
+      "Exam Score": 84,
+      "Assignment 1": 53,
+      "Assignment 1 Status": "Completed",
+      "Assignment 1 Penalty": "",
+      "Assignment 2": 95
+    },
+    {
+      "ID": "DS4378",
+      "Student": "Ethan Parker",
+      "Final Grade": 78.1,
+      "Attendance": 95,
+      "Exam Status": "Fit to Sit",
+      "Exam Score": 76,
+      "Assignment 1": 73,
+      "Assignment 1 Status": "Completed",
+      "Assignment 1 Penalty": "",
+      "Assignment 2": 87
+    },
+    {
+      "ID": "DS9791",
+      "Student": "Felicity James",
+      "Final Grade": 76.3,
+      "Attendance": 93,
+      "Exam Status": "Fit to Sit",
+      "Exam Score": 53,
+      "Assignment 1": 94,
+      "Assignment 1 Status": "Completed",
+      "Assignment 1 Penalty": "",
+      "Assignment 2": 76
+    },
+    {
+      "ID": "DS2011",
+      "Student": "Gabriel Lewis",
+      "Final Grade": 82.82,
+      "Attendance": 94,
+      "Exam Status": "Fit to Sit",
+      "Exam Score": 80,
+      "Assignment 1": 94,
+      "Assignment 1 Status": "Completed",
+      "Assignment 1 Penalty": "🚩 Lateness Penalty (-5%)",
+      "Assignment 2": 77
+    },
+    {
+      "ID": "DS6655",
+      "Student": "Hannah Stone",
+      "Final Grade": 65.6,
+      "Attendance": 82,
+      "Exam Status": "Fit to Sit",
+      "Exam Score": 54,
+      "Assignment 1": 71,
+      "Assignment 1 Status": "Completed",
+      "Assignment 1 Penalty": "",
+      "Assignment 2": 70
+    },
+    {
+      "ID": "DS6446",
+      "Student": "Ian Turner",
+      "Final Grade": 81.8,
+      "Attendance": 100,
+      "Exam Status": "Fit to Sit",
+      "Exam Score": 68,
+      "Assignment 1": 95,
+      "Assignment 1 Status": "Completed",
+      "Assignment 1 Penalty": "",
+      "Assignment 2": 78
+    },
+    {
+      "ID": "DS8178",
+      "Student": "Jasmine Collins",
+      "Final Grade": 74.47,
+      "Attendance": 32,
+      "Exam Status": "Fit to Sit",
+      "Exam Score": 73,
+      "Assignment 1": 78,
+      "Assignment 1 Status": "Completed",
+      "Assignment 1 Penalty": "",
+      "Assignment 2": 75
+    },
+    [
+        {
+            "ID": "DS2556", "Student": "Kevin Morris", "Final Grade": 80.4, "Attendance": 41,
+            "Exam Status": "Fit to Sit", "Exam Score": 81, "Assignment 1": 72,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 91
+        },
+        {
+            "ID": "DS1387", "Student": "Lara Watson", "Final Grade": 73.4, "Attendance": 91,
+            "Exam Status": "Fit to Sit", "Exam Score": 74, "Assignment 1": 65,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 84
+        },
+        {
+            "ID": "DS5339", "Student": "Michael Griffin", "Final Grade": 82.1, "Attendance": 81,
+            "Exam Status": "Fit to Sit", "Exam Score": 81, "Assignment 1": 92,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 70
+        },
+        {
+            "ID": "DS1766", "Student": "Natalie Cooper", "Final Grade": 67.4, "Attendance": 93,
+            "Exam Status": "Fit to Sit", "Exam Score": 82, "Assignment 1": 56,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "🚩 Exceptional Circumstances", "Assignment 2": 68
+        },
+        {
+            "ID": "DS1135", "Student": "Owen Richardson", "Final Grade": 77.1, "Attendance": 89,
+            "Exam Status": "Fit to Sit", "Exam Score": 56, "Assignment 1": 90,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 81
+        },
+        {
+            "ID": "DS5293", "Student": "Paige Scott", "Final Grade": 71.4, "Attendance": 91,
+            "Exam Status": "Fit to Sit", "Exam Score": 95, "Assignment 1": 66,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 55
+        },
+        {
+            "ID": "DS4568", "Student": "Quentin Ramirez", "Final Grade": 46.76, "Attendance": 99,
+            "Exam Status": "Fit to Sit", "Exam Score": 52, "Assignment 1": 82,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "🚩 Lateness Penalty (-5%)", "Assignment 2": 0
+        },
+        {
+            "ID": "DS3602", "Student": "Rebecca Bennett", "Final Grade": 78.3, "Attendance": 71,
+            "Exam Status": "Fit to Sit", "Exam Score": 78, "Assignment 1": 78,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 79
+        },
+        {
+            "ID": "DS4981", "Student": "Stephen Howard", "Final Grade": 80.1, "Attendance": 71,
+            "Exam Status": "Fit to Sit", "Exam Score": 80, "Assignment 1": 93,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 63
+        },
+        {
+            "ID": "DS2366", "Student": "Tracy Bell", "Final Grade": 66.9, "Attendance": 91,
+            "Exam Status": "Fit to Sit", "Exam Score": 63, "Assignment 1": 63,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 76
+        },
+        {
+            "ID": "DS8924", "Student": "Ulysses Barnes", "Final Grade": 70.3, "Attendance": 71,
+            "Exam Status": "Fit to Sit", "Exam Score": 54, "Assignment 1": 91,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 59
+        },
+        {
+            "ID": "DS2684", "Student": "Victoria Foster", "Final Grade": 64.4, "Attendance": 78,
+            "Exam Status": "Fit to Sit", "Exam Score": 70, "Assignment 1": 71,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 50
+        },
+        {
+            "ID": "DS2674", "Student": "Walter Henderson", "Final Grade": 61.1, "Attendance": 84,
+            "Exam Status": "Fit to Sit", "Exam Score": 65, "Assignment 1": 53,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 68
+        },
+        {
+            "ID": "DS1149", "Student": "Xander Nelson", "Final Grade": 65.2, "Attendance": 56,
+            "Exam Status": "Fit to Sit", "Exam Score": 56, "Assignment 1": 82,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "🚩 Exceptional Circumstances", "Assignment 2": 52
+        },
+        {
+            "ID": "DS5583", "Student": "Yvette Campbell", "Final Grade": 71.1, "Attendance": 63,
+            "Exam Status": "Fit to Sit", "Exam Score": 75, "Assignment 1": 75,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 62
+        },
+        {
+            "ID": "DS1563", "Student": "Zane Mitchell", "Final Grade": 74.6, "Attendance": 93,
+            "Exam Status": "Fit to Sit", "Exam Score": 57, "Assignment 1": 80,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 85
+        },
+        {
+            "ID": "DS6404", "Student": "Amelia Ross", "Final Grade": 59.44, "Attendance": 70,
+            "Exam Status": "Fit to Sit", "Exam Score": 54, "Assignment 1": 68,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "🚩 Lateness Penalty (-5%)", "Assignment 2": 58
+        },
+        {
+            "ID": "DS8664", "Student": "Benjamin Ward", "Final Grade": 64.2, "Attendance": 55,
+            "Exam Status": "Fit to Sit", "Exam Score": 50, "Assignment 1": 78,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 60
+        },
+        {
+            "ID": "DS9607", "Student": "Chloe Edwards", "Final Grade": 76.7, "Attendance": 88,
+            "Exam Status": "Fit to Sit", "Exam Score": 62, "Assignment 1": 77,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 91
+        },
+        {
+            "ID": "DS5013", "Student": "David Fisher", "Final Grade": 78.3, "Attendance": 66,
+            "Exam Status": "Fit to Sit", "Exam Score": 88, "Assignment 1": 90,
+            "Assignment 1 Status": "Completed", "Assignment 1 Penalty": "", "Assignment 2": 53
+        }
+    ],
+    [
+        {
+          "ID": "DS2760",
+          "Student": "Emma Butler",
+          "Final Grade": 75,
+          "Attendance": 60,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 82,
+          "Assignment 1": 72,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 72
+        },
+        {
+          "ID": "DS5971",
+          "Student": "Frederick Murphy",
+          "Final Grade": 72.6,
+          "Attendance": 69,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 92,
+          "Assignment 1": 75,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 50
+        },
+        {
+          "ID": "DS2594",
+          "Student": "Grace Price",
+          "Final Grade": 66.3,
+          "Attendance": 79,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 62,
+          "Assignment 1": 51,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "🚩 Exceptional Circumstances",
+          "Assignment 2": 91
+        },
+        {
+          "ID": "DS1207",
+          "Student": "Henry Stewart",
+          "Final Grade": 58.5,
+          "Attendance": 55,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 65,
+          "Assignment 1": 60,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 50
+        },
+        {
+          "ID": "DS8709",
+          "Student": "Isabella Torres",
+          "Final Grade": 64.2,
+          "Attendance": 88,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 52,
+          "Assignment 1": 54,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 90
+        },
+        {
+          "ID": "DS9507",
+          "Student": "Jackie Peterson",
+          "Final Grade": 90.8,
+          "Attendance": 68,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 88,
+          "Assignment 1": 92,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 92
+        },
+        {
+          "ID": "DS1882",
+          "Student": "Kurt Bailey",
+          "Final Grade": 69.7,
+          "Attendance": 98,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 61,
+          "Assignment 1": 88,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 54
+        },
+        {
+          "ID": "DS9592",
+          "Student": "Lucy Jenkins",
+          "Final Grade": 85.6,
+          "Attendance": 45,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 91,
+          "Assignment 1": 82,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "🚩 Academic Misconduct",
+          "Assignment 2": 85
+        },
+        {
+          "ID": "DS9880",
+          "Student": "Mason Cooper",
+          "Final Grade": 41.15,
+          "Attendance": 84,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 83,
+          "Assignment 1": 0,
+          "Assignment 1 Status": "Not Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 57
+        },
+        {
+          "ID": "DS6445",
+          "Student": "Nina Adams",
+          "Final Grade": 74.2,
+          "Attendance": 91,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 73,
+          "Assignment 1": 73,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 77
+        },
+        {
+          "ID": "DS8511",
+          "Student": "Oscar Flores",
+          "Final Grade": 49.7,
+          "Attendance": 97,
+          "Exam Status": "Absent",
+          "Exam Score": 0,
+          "Assignment 1": 56,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 91
+        },
+        {
+          "ID": "DS6948",
+          "Student": "Penelope Russell",
+          "Final Grade": 77,
+          "Attendance": 66,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 73,
+          "Assignment 1": 70,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "🚩 Lateness Penalty (-5%)",
+          "Assignment 2": 95
+        },
+        {
+          "ID": "DS5478",
+          "Student": "Ryan Powell",
+          "Final Grade": 78.7,
+          "Attendance": 93,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 90,
+          "Assignment 1": 58,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "🚩 Exceptional Circumstances",
+          "Assignment 2": 95
+        },
+        {
+          "ID": "DS1215",
+          "Student": "Sophia Simmons",
+          "Final Grade": 79.6,
+          "Attendance": 86,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 93,
+          "Assignment 1": 67,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 83
+        },
+        {
+          "ID": "DS4834",
+          "Student": "Theodore White",
+          "Final Grade": 81,
+          "Attendance": 58,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 68,
+          "Assignment 1": 90,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 82
+        },
+        {
+          "ID": "DS7831",
+          "Student": "Ursula Martin",
+          "Final Grade": 39.6,
+          "Attendance": 93,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 56,
+          "Assignment 1": 0,
+          "Assignment 1 Status": "Not Completed",
+          "Assignment 1 Penalty": "🚩 Exceptional Circumstances",
+          "Assignment 2": 76
+        },
+        {
+          "ID": "DS1767",
+          "Student": "Vince Brown",
+          "Final Grade": 72.2,
+          "Attendance": 98,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 78,
+          "Assignment 1": 74,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 64
+        },
+        {
+          "ID": "DS8872",
+          "Student": "William Gonzales",
+          "Final Grade": 61.2,
+          "Attendance": 76,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 62,
+          "Assignment 1": 66,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 54
+        },
+        {
+          "ID": "DS1907",
+          "Student": "Xenia Moore",
+          "Final Grade": 82,
+          "Attendance": 55,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 92,
+          "Assignment 1": 85,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 68
+        },
+        {
+          "ID": "DS7683",
+          "Student": "Zoe Walker",
+          "Final Grade": 50.5,
+          "Attendance": 63,
+          "Exam Status": "Fit to Sit",
+          "Exam Score": 87,
+          "Assignment 1": 61,
+          "Assignment 1 Status": "Completed",
+          "Assignment 1 Penalty": "",
+          "Assignment 2": 0
+        }
+      ]
+      
+    
+  ]
+  
