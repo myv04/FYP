@@ -1,10 +1,11 @@
-Metric,Value
-Average Attendance (%),85
-Remaining Attendance (%),15
-Software Engineering Avg Score (%),82
-Data Science Avg Score (%),88
-Assignment,Completed,Completed with Penalty,Not Completed,Absent
-Agile Development - Bugs and Fixes,42,3,3,2
-Agile Development - Software Architecture,37,8,4,1
-Machine Learning - Data Analysis,40,8,2,0
-Machine Learning - Model Training,42,5,3,0
+Metric,Value
+Average Attendance (%),79.04
+Remaining Attendance (%),20.96
+Software Engineering Avg Score (%),72.38
+Data Science Avg Score (%),70.4
+
+Assignment,Completed,Completed with Penalty,Not Completed,Absent
+Agile Development - Assignment 1 (Bugs and Fixes),39,6,3,2
+Agile Development - Assignment 2 (Software Architecture),41,4,3,2
+Machine Learning - Assignment 1 (Data Analysis),39,9,2,0
+Machine Learning - Assignment 2 (Machine Learning),42,6,2,0

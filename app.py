@@ -36,7 +36,7 @@ from data_persistence import load_data
 from helpers.shared_dashboard_data import get_processed_se_data, get_processed_ds_data
 from openpyxl.utils import get_column_letter
 import json
-
+from flask import send_file, make_response
 
 
 app = Flask(__name__)
@@ -1031,24 +1031,38 @@ def download_csv_students_overview_dashboard():
 
 
 
+import os
+import json
+import random
+import pandas as pd
+import openpyxl
+from io import BytesIO, StringIO
+from openpyxl.styles import Font, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+
 def generate_student_attendance_insights_report(file_type="xlsx"):
-    # === Load data ===
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     DATA_DIR = os.path.join(BASE_DIR, "data")
 
-    def load_json(filepath):
-        with open(filepath, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        flat = []
-        for entry in data:
-            if isinstance(entry, list):
-                flat.extend(entry)
-            else:
-                flat.append(entry)
-        return [(s["ID"], s["Student"], s["Attendance"]) for s in flat]
+    def load_students(file_name):
+        try:
+            with open(os.path.join(DATA_DIR, file_name), "r", encoding="utf-8") as f:
+                data = json.load(f)
+            flat = []
+            for entry in data:
+                if isinstance(entry, list):
+                    flat.extend(entry)
+                elif isinstance(entry, dict):
+                    flat.append(entry)
+            return [(s["ID"], s["Student"], s["Attendance"]) for s in flat if "ID" in s and "Student" in s and "Attendance" in s]
+        except:
+            return []
 
-    se_students = load_json(os.path.join(DATA_DIR, "software_engineering.json"))
-    ds_students = load_json(os.path.join(DATA_DIR, "data_science.json"))
+    se_students = load_students("software_engineering.json")
+    ds_students = load_students("data_science.json")
+
+    if not se_students or not ds_students:
+        return None
 
     se_lectures = [
         "Application Software", "Databases", "Operating Systems", "Networking",
@@ -1060,164 +1074,199 @@ def generate_student_attendance_insights_report(file_type="xlsx"):
         "Machine Learning", "Deep Learning", "NLP", "AI Ethics",
         "Reinforcement Learning", "Cloud Computing for AI", "Model Deployment", "Data Science Projects"
     ]
-    se_weeks = [f"Week {i+1} ({se_lectures[i]})" for i in range(12)]
-    ds_weeks = [f"Week {i+1} ({ds_lectures[i]})" for i in range(12)]
 
-    # === Simulate weekly attendance per student ===
-    def simulate_weekly_attendance(students, week_labels):
+    def simulate_attendance(students, lectures):
+        week_labels = [f"Week {i+1} ({topic})" for i, topic in enumerate(lectures)]
         total_weeks = len(week_labels)
-        rows = []
-        for student_id, student_name, overall_attendance in students:
-            attended_weeks_count = round((overall_attendance / 100) * total_weeks)
-            attended_indices = sorted(random.sample(range(total_weeks), attended_weeks_count))
-            weekly = [100 if i in attended_indices else 0 for i in range(total_weeks)]
-            rows.append([student_id, student_name] + weekly)
+        data = []
+
+        for student_id, name, overall_attendance in students:
+            attended_count = round((overall_attendance / 100) * total_weeks)
+            attended_weeks = sorted(random.sample(range(total_weeks), attended_count))
+            weekly = [100 if i in attended_weeks else 0 for i in range(total_weeks)]
+            data.append([student_id, name] + weekly)
+
         columns = ["Student ID", "Student Name"] + week_labels
-        return pd.DataFrame(rows, columns=columns)
+        return pd.DataFrame(data, columns=columns)
 
-    df_se = simulate_weekly_attendance(se_students, se_weeks)
-    df_ds = simulate_weekly_attendance(ds_students, ds_weeks)
+    df_se = simulate_attendance(se_students, se_lectures)
+    df_ds = simulate_attendance(ds_students, ds_lectures)
 
-    # === Export CSV ===
-    if file_type == "csv":
-        with BytesIO() as b:
-            b.write(b"Software Engineering\n")
-            df_se.to_csv(b, index=False)
-            b.write(b"\n\nData Science\n")
-            df_ds.to_csv(b, index=False)
-            return b.getvalue()
-
-    # === Export Excel ===
-    elif file_type == "xlsx":
+    if file_type == "xlsx":
         wb = openpyxl.Workbook()
         ws_se = wb.active
         ws_se.title = "Software Engineering"
         ws_ds = wb.create_sheet("Data Science")
 
-        def write_df_to_sheet(ws, df):
+        def write_to_sheet(ws, df):
             header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
             border = Border(left=Side(style='thin'), right=Side(style='thin'),
                             top=Side(style='thin'), bottom=Side(style='thin'))
 
-            # Header row
-            for col_num, col_name in enumerate(df.columns, start=1):
-                cell = ws.cell(row=1, column=col_num, value=col_name)
+            for col_idx, col_name in enumerate(df.columns, start=1):
+                cell = ws.cell(row=1, column=col_idx, value=col_name)
                 cell.fill = header_fill
                 cell.font = Font(bold=True)
                 cell.border = border
 
-            # Data rows
             for row_idx, row_data in enumerate(df.itertuples(index=False), start=2):
                 for col_idx, value in enumerate(row_data, start=1):
                     cell = ws.cell(row=row_idx, column=col_idx, value=value)
                     cell.border = border
 
-            # Auto-width
-            for col in ws.columns:
-                max_len = max(len(str(cell.value)) if cell.value else 0 for cell in col)
-                ws.column_dimensions[col[0].column_letter].width = max_len + 2
+                    # Attendance fill colors
+                    if isinstance(value, (int, float)):
+                        if value == 100:
+                            cell.fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")  # Green
+                        elif value == 0:
+                            cell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")  # Red
 
-        write_df_to_sheet(ws_se, df_se)
-        write_df_to_sheet(ws_ds, df_ds)
+            for col in ws.columns:
+                max_length = max(len(str(cell.value)) if cell.value else 0 for cell in col)
+                ws.column_dimensions[col[0].column_letter].width = max_length + 2
+
+        write_to_sheet(ws_se, df_se)
+        write_to_sheet(ws_ds, df_ds)
 
         b = BytesIO()
         wb.save(b)
         b.seek(0)
         return b.getvalue()
 
+    elif file_type == "csv":
+        output = StringIO()
+        output.write("Software Engineering\n")
+        df_se.to_csv(output, index=False)
+        output.write("\n\nData Science\n")
+        df_ds.to_csv(output, index=False)
+        return output.getvalue().encode("utf-8")
+
     return None
 
-@app.route('/download_excel_student_attendance_insights_renamed')  # 📌 Changed route name
-@login_required
-def download_excel_student_attendance_insights_renamed():  # 📌 Changed function name
-    file_path = generate_student_attendance_insights_report("xlsx")
-    return send_file(file_path, as_attachment=True, download_name="Student_Attendance_Insights.xlsx")
+
+@app.route("/download_excel_student_attendance_insights_renamed")
+def download_excel_student_attendance_insights_renamed():
+    content = generate_student_attendance_insights_report("xlsx")
+    if not content:
+        return "❌ Export failed", 500
+
+    return send_file(
+        BytesIO(content),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        download_name="student_attendance_insights.xlsx",
+        as_attachment=True
+    )
 
 
-@app.route('/download_csv_student_attendance_insights_renamed')  # 📌 Changed route name
-@login_required
-def download_csv_student_attendance_insights_renamed():  # 📌 Changed function name
-    file_path = generate_student_attendance_insights_report("csv")
-    return send_file(file_path, as_attachment=True, download_name="Student_Attendance_Insights.csv")
+
+@app.route("/download_csv_student_attendance_insights_renamed")
+def download_csv_student_attendance_insights_renamed():
+    content = generate_student_attendance_insights_report("csv")
+    if not content:
+        return "❌ CSV export failed", 500
+
+    return send_file(
+        BytesIO(content),
+        mimetype="text/csv",
+        download_name="student_attendance_insights.csv",
+        as_attachment=True
+    )
+
+
 
 
 
 #✅ Function to generate Course Registers Export
-def generate_course_registers_report(file_type="excel"):
-    file_path = f"course_registers.{file_type}"
+def generate_course_registers_report(file_type="xlsx"):
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    json_path = os.path.join(BASE_DIR, "course_registers.json")  # ✅ your main folder
 
-    # Replace this sample data with your actual data retrieval logic
-    data_science_data = [
-        {"UNI ID": "DS1012", "NAME": "Alex Carter", "Role": "Student"},
-        {"UNI ID": "DS4772", "NAME": "Bella Sanders", "Role": "Student"},
-    ]  # Add more sample data
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"❌ Could not load course_registers.json: {e}")
+        return None
 
-    software_data = [
-        {"UNI ID": "SE6352", "NAME": "Alice Johnson", "Role": "Student"},
-        {"UNI ID": "SE8934", "NAME": "Bob Smith", "Role": "Student"},
-    ]  # Add more sample data
+    if not data or not isinstance(data, list):
+        print("❌ Invalid or empty JSON content")
+        return None
 
-    # Combine SE and DS students
-    all_students = data_science_data + software_data
+    df = pd.DataFrame(data)
 
-    # Create a DataFrame
-    df = pd.DataFrame(all_students, columns=['UNI ID', 'NAME', 'Role'])
+    # Split students by course based on UNI ID prefix
+    df_se = df[df["UNI ID"].str.startswith("SE")]
+    df_ds = df[df["UNI ID"].str.startswith("DS")]
 
-    #✅ Generate Excel Report
     if file_type == "xlsx":
         wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Course Registers"
+        ws_se = wb.active
+        ws_se.title = "Software Engineering"
+        ws_ds = wb.create_sheet("Data Science")
 
-        #✅ Styling
-        header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
-        border = Border(left=Side(style='thin'), right=Side(style='thin'),
-                        top=Side(style='thin'), bottom=Side(style='thin'))
+        def write_sheet(ws, df_course):
+            header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
+            border = Border(left=Side(style="thin"), right=Side(style="thin"),
+                            top=Side(style="thin"), bottom=Side(style="thin"))
 
-        ws.append(df.columns.tolist())
+            columns = ["UNI ID", "NAME", "Role"]
+            for col_num, header in enumerate(columns, start=1):
+                cell = ws.cell(row=1, column=col_num, value=header)
+                cell.fill = header_fill
+                cell.font = Font(bold=True)
+                cell.border = border
 
-        #✅ Apply styling to headers
-        for col_num, column_title in enumerate(df.columns, start=1):
-            cell = ws.cell(row=1, column=col_num, value=column_title)
-            cell.fill = header_fill
-            cell.border = border
+            for row_idx, row in enumerate(df_course[columns].itertuples(index=False), start=2):
+                for col_idx, value in enumerate(row, start=1):
+                    cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                    cell.border = border
 
-        # Insert data
-        for row in df.itertuples(index=False):
-            ws.append(list(row))
-            
-        # Prepare the Excel file for download
-        with BytesIO() as b:
-            wb.save(b)
-            return b.getvalue()
+            for col in ws.columns:
+                max_len = max(len(str(cell.value)) if cell.value else 0 for cell in col)
+                ws.column_dimensions[col[0].column_letter].width = max_len + 2
 
-    #✅ Generate CSV Report
+        write_sheet(ws_se, df_se)
+        write_sheet(ws_ds, df_ds)
+
+        b = BytesIO()
+        wb.save(b)
+        b.seek(0)
+        return b.getvalue()
+
     elif file_type == "csv":
-        csv_data = df.to_csv(index=False)
-        return csv_data.encode('utf-8')
+        output = StringIO()
+        output.write("Software Engineering\n")
+        df_se.to_csv(output, index=False)
+        output.write("\n\nData Science\n")
+        df_ds.to_csv(output, index=False)
+        return output.getvalue().encode("utf-8")
 
-    return None  #✅ If invalid file_type is provided
+    return None
 
-@app.route('/download_excel_course_registers')
+@app.route("/download_excel_course_registers")
 @login_required
 def download_excel_course_registers():
-    excel_data = generate_course_registers_report("xlsx")
+    content = generate_course_registers_report("xlsx")
+    if not content:
+        return "❌ Excel export failed", 500
     return send_file(
-        BytesIO(excel_data),
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        as_attachment=True,
-        download_name='Course_Registers.xlsx'
+        BytesIO(content),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        download_name="Course_Registers.xlsx",
+        as_attachment=True
     )
 
-@app.route('/download_csv_course_registers')
+@app.route("/download_csv_course_registers")
 @login_required
 def download_csv_course_registers():
-    csv_data = generate_course_registers_report("csv")
+    content = generate_course_registers_report("csv")
+    if not content:
+        return "❌ CSV export failed", 500
     return send_file(
-        BytesIO(csv_data),
-        mimetype='text/csv',
-        as_attachment=True,
-        download_name='Course_Registers.csv'
+        BytesIO(content),
+        mimetype="text/csv",
+        download_name="Course_Registers.csv",
+        as_attachment=True
     )
 
 ## for admin course management
