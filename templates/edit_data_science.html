@@ -66,9 +66,13 @@
 
       <label for="status">Status:</label>
       <select id="status" name="status" required>
-        <option value="Active" {% if course['status'] == 'Active' %}selected{% endif %}>Active</option>
-        <option value="Inactive" {% if course['status'] == 'Inactive' %}selected{% endif %}>Inactive</option>
+      <option value="Active" {% if course['status'] == 'Active' %}selected{% endif %}>Active</option>
+      <option value="Inactive" {% if course['status'] == 'Inactive' %}selected{% endif %}>Inactive</option>
       </select>
+
+    <label for="year">Year/Intake:</label>
+    <input type="number" id="year" name="year" value="{{ course['year'] }}" required>
+
 
       <div class="btn-container">
         <button type="submit" class="save-btn">💾 Save Changes</button>
@@ -102,6 +106,7 @@
           <th>Actions</th>
         </tr>
       </thead>
+      
       <tbody></tbody>
     </table>
 
@@ -113,20 +118,18 @@
 </div>
 
 <script>
-// JavaScript will match your software page for consistency
-const originalData = [
-  {% for user in users %}
-  {
-    uni_id: "{{ user['uni_id'] }}",
-    username: "{{ user['username'] }}",
-    role: "{{ user['role'] }}",
-    join_date: "{{ user['join_date'] }}",
-    enrollment_status: "{{ user['enrollment_status'] }}",
-    id: {{ user['id'] }}
-  },
-  {% endfor %}
-];
-
+  const originalData = [
+    {% for user in users %}
+    {
+      uni_id: "{{ user['uni_id'] }}",
+      username: "{{ user['username'] }}",
+      role: "{{ user['role'] }}",
+      enrollment_status: "{{ user['enrollment_status'] }}",
+      join_date: "{{ user['join_date'] }}",
+      id: "{{ user['id'] }}"
+    },
+    {% endfor %}
+  ];
 let filteredData = [...originalData];
 let currentPage = 1;
 const rowsPerPage = 50;

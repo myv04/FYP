@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Software Engineering Modules</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin_navbar.css') }}">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f8f9fc;
+      color: #2c3e50;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .main-content {
+      margin-left: 220px;
+      padding: 50px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .page-title {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #34495e;
+      margin-bottom: 40px;
+    }
+
+    .card-grid {
+      display: flex;
+      gap: 40px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 1000px;
+      width: 100%;
+    }
+
+    .card-link {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .card {
+      background-color: #ffffff;
+      border-radius: 12px;
+      padding: 30px;
+      width: 260px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      transition: all 0.3s ease;
+      border: 1px solid #e6e9f0;
+      cursor: pointer;
+    }
+
+    .card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+    }
+
+    .card h3 {
+      margin-bottom: 10px;
+      color: #007bff;
+    }
+
+    .card p {
+      font-size: 15px;
+      color: #555;
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        margin-left: 0;
+        padding: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+  {% include 'navbar_admin.html' %}
+
+  <div class="main-content">
+    <h1 class="page-title">Software Engineering Modules (2025)</h1>
+
+    <div class="card-grid">
+      <a href="/admin/modules/agile" class="card-link">
+        <div class="card">
+          <h3>Agile Development</h3>
+          <p>Module Code: SE201</p>
+        </div>
+      </a>
+      <a href="/admin/modules/web-systems" class="card-link">
+        <div class="card">
+          <h3>Web Systems</h3>
+          <p>Module Code: SE202</p>
+        </div>
+      </a>
+      <a href="/admin/modules/software-testing" class="card-link">
+        <div class="card">
+          <h3>Software Testing & QA</h3>
+          <p>Module Code: SE203</p>
+        </div>
+      </a>
+      <a href="/admin/modules/cloud-software" class="card-link">
+        <div class="card">
+          <h3>Cloud-Based Software Engineering</h3>
+          <p>Module Code: SE204</p>
+        </div>
+      </a>
+      
+    </div>
+  </div>
+</body>
+</html>

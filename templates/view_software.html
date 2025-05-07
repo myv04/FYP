@@ -91,47 +91,47 @@
       },
       {% endfor %}
     ];
-
+  
     let filteredData = [...originalData];
     let currentPage = 1;
     const rowsPerPage = 50;
-
+  
     function applyFilters() {
       const searchInput = document.getElementById("searchInput").value.toLowerCase();
       const roleFilter = document.getElementById("roleFilter").value;
-
+  
       filteredData = originalData.filter(user => {
         const matchesSearch =
           user.uni_id.toLowerCase().includes(searchInput) ||
           user.username.toLowerCase().includes(searchInput) ||
           user.email.toLowerCase().includes(searchInput) ||
           user.role.toLowerCase().includes(searchInput);
-
+  
         const matchesRole = !roleFilter || user.role === roleFilter;
-
+  
         return matchesSearch && matchesRole;
       });
-
+  
       currentPage = 1;
       renderTable();
     }
-
+  
     function renderTable() {
       const tbody = document.querySelector("#dataTable tbody");
       tbody.innerHTML = "";
-
+  
       const start = (currentPage - 1) * rowsPerPage;
       const end = start + rowsPerPage;
       const pageData = filteredData.slice(start, end);
-
+  
       pageData.forEach(user => {
         const row = tbody.insertRow();
         row.onclick = () => highlightRow(row);
-
+  
         row.insertCell().textContent = user.uni_id;
         row.insertCell().textContent = user.username;
         row.insertCell().textContent = user.email;
-
+  
         const roleCell = row.insertCell();
         const span = document.createElement("span");
         span.classList.add("role-badge");
@@ -141,31 +141,31 @@
         if (user.role === "Admin") span.classList.add("role-admin");
         span.textContent = user.role;
         roleCell.appendChild(span);
-
+  
         row.insertCell().textContent = user.join_date;
         row.insertCell().textContent = user.enrollment_status;
       });
-
+  
       document.getElementById("recordCount").textContent =
         filteredData.length > 0
           ? `Showing ${Math.min(end, filteredData.length)} of ${filteredData.length} records`
           : "No matching records found.";
-
+  
       renderPagination();
     }
-
+  
     function renderPagination() {
       const pagination = document.getElementById("pagination");
       pagination.innerHTML = "";
       const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-
+  
       if (totalPages <= 1) return;
-
+  
       for (let i = 1; i <= totalPages; i++) {
         const pageLink = document.createElement("span");
         pageLink.className = "page-link";
         if (i === currentPage) pageLink.style.fontWeight = "bold";
-
+  
         pageLink.textContent = i;
         pageLink.onclick = () => {
           currentPage = i;
@@ -174,16 +174,17 @@
         pagination.appendChild(pageLink);
       }
     }
-
+  
     function highlightRow(row) {
       document.querySelectorAll("#dataTable tbody tr").forEach(r => r.classList.remove("selected-row"));
       row.classList.add("selected-row");
     }
-
+  
     document.addEventListener("DOMContentLoaded", () => {
       renderTable();
     });
   </script>
+  
 
 </body>
 </html>

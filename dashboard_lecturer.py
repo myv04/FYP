@@ -2,7 +2,7 @@ import dash
 from dash import dcc, html
 import plotly.graph_objs as go
 import textwrap
-from helpers.shared_dashboard_data import get_processed_se_data, get_processed_ds_data
+from incase.shared_dashboard_data import get_processed_se_data, get_processed_ds_data
 
 # Initialize Dash app
 dash_lecturer = dash.Dash(

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Course Module Management</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin_navbar.css') }}">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f8f9fc;
+      color: #2c3e50;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .main-content {
+      margin-left: 220px;
+      padding: 50px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .dashboard-title {
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: #34495e;
+      margin-bottom: 40px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dashboard-title::before {
+      content: "📚";
+      font-size: 2rem;
+    }
+
+    .card-grid {
+      display: flex;
+      gap: 40px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 1000px;
+      width: 100%;
+    }
+
+    .card-link {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .card {
+      background-color: #ffffff;
+      border-radius: 12px;
+      padding: 30px;
+      width: 240px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      transition: all 0.3s ease;
+      border: 1px solid #e6e9f0;
+      cursor: pointer;
+    }
+
+    .card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+    }
+
+    .card-icon {
+      font-size: 2.4rem;
+      margin-bottom: 15px;
+      color: #007bff;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        margin-left: 0;
+        padding: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  {% include 'navbar_admin.html' %}
+
+  <div class="main-content">
+    <h1 class="dashboard-title">Course Module Management</h1>
+
+    <div class="card-grid">
+      <a href="/admin/courses/data-science" class="card-link">
+        <div class="card">
+          <div class="card-icon">💻</div>
+          <div class="card-title">Data Science</div>
+        </div>
+      </a>
+      <a href="/admin/courses/software-engineering" class="card-link">
+        <div class="card">
+          <div class="card-icon">🧠</div>
+          <div class="card-title">Software Engineering</div>
+        </div>
+      </a>
+      <a href="/admin/courses/shared" class="card-link">
+        <div class="card">
+          <div class="card-icon">🔗</div>
+          <div class="card-title">Shared Modules</div>
+        </div>
+      </a>
+    </div>
+  </div>
+</body>
+</html>

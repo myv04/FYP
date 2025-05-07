@@ -33,10 +33,23 @@ from flask import session
 from flask import Flask, render_template, redirect, url_for, request, flash, session
 from flask_login import login_user, logout_user, login_required
 from data_persistence import load_data
-from helpers.shared_dashboard_data import get_processed_se_data, get_processed_ds_data
+##from incase.shared_dashboard_data import get_processed_se_data, get_processed_ds_data
 from openpyxl.utils import get_column_letter
 import json
 from flask import send_file, make_response
+import pdfkit  # 👈 Add this
+from student_profile_dashboard import course_modules, module_meta
+
+# 👇 Add this right after your imports
+path_wkhtmltopdf = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
+config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+
+
+
+
+
+
+
 
 
 app = Flask(__name__)
@@ -98,6 +111,125 @@ def home_lecturer():
 @login_required
 def home_admin():
     return render_template('home_admin.html', user=current_user)
+
+@app.route('/admin/courses/modules')
+def admin_courses_modules():
+    return render_template('courses_modules_admin.html')
+
+@app.route('/admin/courses/data-science')
+def view_data_science_modules():
+    return render_template('data_science_modules.html')
+
+@app.route('/admin/courses/software-engineering')
+def view_software_eng_modules():
+    return render_template('software_eng_modules.html')
+
+
+@app.route('/admin/courses/shared')
+def view_shared_modules():
+    return render_template('shared_modules.html')
+
+
+
+@app.route("/admin/modules/web-systems")
+def web_systems_dashboard_page():
+    return render_template("web_systems_dashboard.html")
+
+
+
+
+
+@app.route('/admin/modules/ml')
+def ml_dashboard_wrapper():
+    return render_template('ml_dashboard_wrapper.html')
+
+@app.route('/admin/modules/agile')
+def agile_dashboard_wrapper():
+    return render_template('agile_dashboard_wrapper.html')
+
+
+@app.route("/admin/modules/big-data")
+def big_data_module_dashboard():
+    return render_template("big-data.html")
+
+
+@app.route("/admin/modules/software-testing")
+def software_testing_dashboard_wrapper():
+    return render_template("software_testing_dashboard_wrapper.html")
+
+@app.route("/admin/modules/cloud-software")
+def cloud_engineering_dashboard_wrapper():
+    return render_template("cloud_engineering_dashboard_wrapper.html")
+
+@app.route("/admin/modules/mlops")
+def mlops_dashboard_wrapper():
+    return render_template("mlops_dashboard_wrapper.html")
+
+@app.route("/admin/modules/data-ethics")
+def data_ethics_dashboard_wrapper():
+    return render_template("data_ethics_dashboard_wrapper.html")
+
+@app.route("/admin/students")
+def student_list():
+    import sqlite3
+    conn = sqlite3.connect("courses.db")
+    query = """
+        SELECT s.id, s.username, c.name AS course_name, c.code AS course_code
+        FROM students s
+        JOIN enrollments e ON s.id = e.student_id
+        JOIN courses c ON e.course_id = c.id
+        WHERE c.id IN (3, 4)
+        LIMIT 950
+    """
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    return render_template("students.html", students=df.to_dict("records"))
+
+
+@app.route('/admin/student_profile/<student_id>')
+def student_profile_wrapped(student_id):
+    return render_template('student_profile_wrapper.html', student_id=student_id)
+
+@app.route('/admin/lecturers')
+def admin_lecturers():
+    conn = sqlite3.connect('courses.db')
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT lecturer_id, lecturer_name, course_code, module_code, module_week
+        FROM lecturer_assignments
+        ORDER BY lecturer_name, module_code, module_week
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    # Group assignments by lecturer
+    lecturers = {}
+    for row in rows:
+        lid = row['lecturer_id']
+        if lid not in lecturers:
+            lecturers[lid] = {
+                'id': row['lecturer_id'],
+                'name': row['lecturer_name'],
+                'course': row['course_code'],
+                'assignments': []
+            }
+        lecturers[lid]['assignments'].append({
+            'module': row['module_code'],
+            'week': row['module_week']
+        })
+
+    return render_template('lecturers.html', lecturers=list(lecturers.values()))
+
+
+
+
+
+
+
+
+
 
 @app.route('/student_profile')
 @login_required
@@ -602,17 +734,57 @@ def download_csv_attendance():
 def generate_lecturer_dashboard_report(file_type="xlsx"):
     file_path = f"overview_dashboard.{file_type}"
 
-    # ✅ Use processed DataFrames
-    se_df = get_processed_se_data()
-    ds_df = get_processed_ds_data()
+    from course_data import software_engineering_students, data_science_students
+    import pandas as pd
 
-    # ✅ Compute metrics
+    def calculate_final_grade(a1, a2, exam, p1, p2):
+        try:
+            a1 = float(a1) if a1 is not None else 0
+            a2 = float(a2) if a2 is not None else 0
+            exam = float(exam) if exam is not None else 0
+            grade = (a1 * 0.25) + (a2 * 0.25) + (exam * 0.5)
+
+            if isinstance(p1, str):
+                if "Lateness Penalty" in p1:
+                    grade *= 0.95
+                if "Word Count Penalty" in p1:
+                    grade *= 0.9
+            if isinstance(p2, str):
+                if "Lateness Penalty" in p2:
+                    grade *= 0.95
+                if "Word Count Penalty" in p2:
+                    grade *= 0.9
+
+            return round(grade, 2)
+        except:
+            return 0
+
+    # Load and process raw data
+    se_df = pd.DataFrame(software_engineering_students)
+    ds_df = pd.DataFrame(data_science_students)
+
+    se_df["Final Grade"] = se_df.apply(lambda row: calculate_final_grade(
+        row.get("a1_score"),
+        row.get("a2_score"),
+        row.get("exam_score"),
+        row.get("a1_penalty"),
+        row.get("a2_penalty")
+    ), axis=1)
+
+    ds_df["Final Grade"] = ds_df.apply(lambda row: calculate_final_grade(
+        row.get("a1_score"),
+        row.get("a2_score"),
+        row.get("exam_score"),
+        row.get("a1_penalty"),
+        row.get("a2_penalty")
+    ), axis=1)
+
+    # Metrics
     se_avg = se_df["Final Grade"].mean() if not se_df.empty else 0
     ds_avg = ds_df["Final Grade"].mean() if not ds_df.empty else 0
-    avg_attendance = (se_df["Attendance"].mean() + ds_df["Attendance"].mean()) / 2 if not se_df.empty and not ds_df.empty else 0
+    avg_attendance = (se_df["attendance"].mean() + ds_df["attendance"].mean()) / 2 if not se_df.empty and not ds_df.empty else 0
     remaining_attendance = round(100 - avg_attendance, 2)
 
-    # ✅ Metrics Table
     metrics = [
         ["Metric", "Value"],
         ["Average Attendance (%)", round(avg_attendance, 2)],
@@ -621,21 +793,8 @@ def generate_lecturer_dashboard_report(file_type="xlsx"):
         ["Data Science Avg Score (%)", round(ds_avg, 2)]
     ]
 
-    # ✅ Assignment Stats (from live data)
-    def get_status_counts(df, assignment):
-        return df[assignment].value_counts().to_dict()
+   
 
-    assignments = [
-        ["Assignment", "Completed", "Completed with Penalty", "Not Completed", "Absent"],
-        ["Agile Development - Assignment 1 (Bugs and Fixes)"] +
-        [get_status_counts(se_df, "Assignment 1 Status").get(k, 0) for k in ["Completed", "Completed with Penalty", "Not Completed", "Absent"]],
-        ["Agile Development - Assignment 2 (Software Architecture)"] +
-        [get_status_counts(se_df, "Assignment 2 Status").get(k, 0) for k in ["Completed", "Completed with Penalty", "Not Completed", "Absent"]],
-        ["Machine Learning - Assignment 1 (Data Analysis)"] +
-        [get_status_counts(ds_df, "Assignment 1 Status").get(k, 0) for k in ["Completed", "Completed with Penalty", "Not Completed", "Absent"]],
-        ["Machine Learning - Assignment 2 (Machine Learning)"] +
-        [get_status_counts(ds_df, "Assignment 2 Status").get(k, 0) for k in ["Completed", "Completed with Penalty", "Not Completed", "Absent"]],
-    ]
 
     # ✅ Export Logic
     if file_type == "xlsx":
@@ -706,12 +865,39 @@ def download_csv_lecturer_dashboard():
 
 # ✅ Function to generate Software Engineering Dashboard Export
 def generate_software_engineering_report(file_type="excel"):
-    file_path = f"software_engineering_dashboard.{file_type}"
+    from course_data import software_engineering_students
 
-    # ✅ Get live processed data
-    df = get_processed_se_data()
+    def calculate_final_grade(a1, a2, exam, p1, p2):
+        try:
+            a1 = float(a1) if a1 is not None else 0
+            a2 = float(a2) if a2 is not None else 0
+            exam = float(exam) if exam is not None else 0
+            grade = (a1 * 0.25) + (a2 * 0.25) + (exam * 0.5)
 
-    # ✅ Clean up duplicates — only keep needed, nicely formatted columns
+            if isinstance(p1, str):
+                if "Lateness Penalty" in p1:
+                    grade *= 0.95
+                if "Word Count Penalty" in p1:
+                    grade *= 0.9
+            if isinstance(p2, str):
+                if "Lateness Penalty" in p2:
+                    grade *= 0.95
+                if "Word Count Penalty" in p2:
+                    grade *= 0.9
+
+            return round(grade, 2)
+        except:
+            return 0
+
+    df = pd.DataFrame(software_engineering_students)
+    df["Final Grade"] = df.apply(lambda row: calculate_final_grade(
+        row.get("a1_score"),
+        row.get("a2_score"),
+        row.get("exam_score"),
+        row.get("a1_penalty"),
+        row.get("a2_penalty")
+    ), axis=1)
+
     df = df[[
         "ID", "Student", "Final Grade", "Attendance", "Exam Status", "Exam Score",
         "Assignment 1 (Bugs and Fixes)", "Assignment 1 Status", "Assignment 1 Penalty",
@@ -719,41 +905,34 @@ def generate_software_engineering_report(file_type="excel"):
         "Status"
     ]]
 
-    # ✅ Excel Export
     if file_type == "xlsx":
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Software Eng Dashboard"
 
-        # ✅ Styling
         header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
         border = Border(left=Side(style='thin'), right=Side(style='thin'),
                         top=Side(style='thin'), bottom=Side(style='thin'))
 
-        # ✅ Title
         ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(df.columns))
         title_cell = ws.cell(row=1, column=1, value="Software Engineering Dashboard Report")
         title_cell.font = Font(bold=True, size=14)
         title_cell.alignment = Alignment(horizontal="center")
 
-        # ✅ Headers
         for col_num, column_title in enumerate(df.columns, start=1):
             cell = ws.cell(row=2, column=col_num, value=column_title)
             cell.fill = header_fill
             cell.border = border
             cell.alignment = Alignment(horizontal="center")
 
-        # ✅ Data Rows
         for row_idx, row in enumerate(df.itertuples(index=False), start=3):
             for col_idx, value in enumerate(row, start=1):
-                cell = ws.cell(row=row_idx, column=col_idx, value=value)
-                cell.border = border
+                ws.cell(row=row_idx, column=col_idx, value=value).border = border
 
         with BytesIO() as b:
             wb.save(b)
             return b.getvalue()
 
-    # ✅ CSV Export
     elif file_type == "csv":
         return df.to_csv(index=False).encode("utf-8")
 
@@ -784,12 +963,39 @@ def download_csv_software_engineering_dashboard():
 
 # ✅ Function to generate Data Science Dashboard Export
 def generate_data_science_report(file_type="excel"):
-    file_path = f"data_science_dashboard.{file_type}"
+    from course_data import data_science_students
 
-    # ✅ Get live data
-    df = get_processed_ds_data()
+    def calculate_final_grade(a1, a2, exam, p1, p2):
+        try:
+            a1 = float(a1) if a1 is not None else 0
+            a2 = float(a2) if a2 is not None else 0
+            exam = float(exam) if exam is not None else 0
+            grade = (a1 * 0.25) + (a2 * 0.25) + (exam * 0.5)
 
-    # ✅ Only include clean, export-friendly columns
+            if isinstance(p1, str):
+                if "Lateness Penalty" in p1:
+                    grade *= 0.95
+                if "Word Count Penalty" in p1:
+                    grade *= 0.9
+            if isinstance(p2, str):
+                if "Lateness Penalty" in p2:
+                    grade *= 0.95
+                if "Word Count Penalty" in p2:
+                    grade *= 0.9
+
+            return round(grade, 2)
+        except:
+            return 0
+
+    df = pd.DataFrame(data_science_students)
+    df["Final Grade"] = df.apply(lambda row: calculate_final_grade(
+        row.get("a1_score"),
+        row.get("a2_score"),
+        row.get("exam_score"),
+        row.get("a1_penalty"),
+        row.get("a2_penalty")
+    ), axis=1)
+
     df = df[[
         "ID", "Student", "Final Grade", "Attendance", "Exam Status", "Exam Score",
         "Assignment 1 (Data Analysis)", "Assignment 1 Status", "Assignment 1 Penalty",
@@ -802,25 +1008,21 @@ def generate_data_science_report(file_type="excel"):
         ws = wb.active
         ws.title = "Data Science Dashboard"
 
-        # ✅ Styling
         header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
         border = Border(left=Side(style='thin'), right=Side(style='thin'),
                         top=Side(style='thin'), bottom=Side(style='thin'))
 
-        # ✅ Title at top
         ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(df.columns))
         title_cell = ws.cell(row=1, column=1, value="Data Science Dashboard Report")
         title_cell.font = Font(bold=True, size=14)
         title_cell.alignment = Alignment(horizontal="center")
 
-        # ✅ Headers
         for col_num, column_title in enumerate(df.columns, start=1):
             cell = ws.cell(row=2, column=col_num, value=column_title)
             cell.fill = header_fill
             cell.border = border
             cell.alignment = Alignment(horizontal="center")
 
-        # ✅ Data
         for row_idx, row in enumerate(df.itertuples(index=False), start=3):
             for col_idx, value in enumerate(row, start=1):
                 ws.cell(row=row_idx, column=col_idx, value=value).border = border
@@ -833,6 +1035,7 @@ def generate_data_science_report(file_type="excel"):
         return df.to_csv(index=False).encode("utf-8")
 
     return None
+
 
 # ✅ Flask Routes to Export Data Science Report
 @app.route('/download_excel_data_science_dashboard')
@@ -1283,17 +1486,102 @@ def get_db_connection():
 # ====================
 @app.route('/api/courses', methods=['GET'])
 def get_courses():
-    conn = get_db_connection()
+    courses = fetch_course_data()  # ✅ Use your cleaned final_data
+    return jsonify(courses)
+
+
+
+def fetch_course_data():
+    conn = sqlite3.connect('courses.db')
+    conn.row_factory = sqlite3.Row
     courses = conn.execute('SELECT * FROM courses').fetchall()
+    final_data = []
+
+    for course in courses:
+        course_id = course['id']
+
+        # Live counts
+        student_count = conn.execute('''
+            SELECT COUNT(*) FROM students s
+            JOIN enrollments e ON s.id = e.student_id
+            WHERE e.course_id = ? AND s.role = 'Student' AND s.enrollment_status != 'Removed'
+        ''', (course_id,)).fetchone()[0]
+
+        lecturer_count = conn.execute('''
+            SELECT COUNT(*) FROM students s
+            JOIN enrollments e ON s.id = e.student_id
+            WHERE e.course_id = ? AND s.role = 'Lecturer' AND s.enrollment_status != 'Removed'
+        ''', (course_id,)).fetchone()[0]
+
+        final_data.append({
+            'id': course_id,
+            'name': course['name'],
+            'code': course['code'],
+            'year': course['year'],   # ✅ added safely
+            'status': course['status'],
+            'students': student_count,
+            'lecturers': lecturer_count
+        })
+
     conn.close()
-    return jsonify([dict(course) for course in courses])
+    return final_data
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ====================
 # Route: Course Management Page
 # ====================
 @app.route('/course_management')
 def course_management():
-    return render_template('course_management.html')
+    selected_year = request.args.get('year', default='2025')  # default to 2025 if no year selected
+    conn = get_db_connection()
+
+    courses = conn.execute('SELECT * FROM courses WHERE year = ?', (selected_year,)).fetchall()
+    final_data = []
+
+    for course in courses:
+        course_id = course['id']
+
+        student_count = conn.execute('''
+            SELECT COUNT(*) FROM students s
+            JOIN enrollments e ON s.id = e.student_id
+            WHERE e.course_id = ? AND s.role = 'Student' AND s.enrollment_status != 'Removed'
+        ''', (course_id,)).fetchone()[0]
+
+        lecturer_count = conn.execute('''
+            SELECT COUNT(*) FROM students s
+            JOIN enrollments e ON s.id = e.student_id
+            WHERE e.course_id = ? AND s.role = 'Lecturer' AND s.enrollment_status != 'Removed'
+        ''', (course_id,)).fetchone()[0]
+
+        final_data.append({
+            'id': course['id'],
+            'name': course['name'],
+            'code': course['code'],
+            'year': course['year'],
+            'status': course['status'],
+            'students': student_count,
+            'lecturers': lecturer_count
+        })
+
+    conn.close()
+    return render_template('course_management.html', courses=final_data, selected_year=selected_year)
+
+
+
 
 # ====================
 # API: Fetch all students in a course
@@ -1309,41 +1597,43 @@ def get_course_students(course_id):
     conn.close()
     return jsonify([dict(student) for student in students])
 
-# ====================
+## ====================
 # Route: View Course Page (students with 'Removed' status hidden)
 # ====================
 @app.route('/course/<int:course_id>/view')
 def view_course(course_id):
     conn = get_db_connection()
 
-    # Fetch course details
+    # Get course info
     course = conn.execute('SELECT * FROM courses WHERE id = ?', (course_id,)).fetchone()
     if not course:
         conn.close()
         return "Course Not Found", 404
 
-    # Fetch active enrolled users
+    # ✅ FIXED: Add s.id AS uni_id so template can use user['uni_id']
     users_in_course = conn.execute('''
-        SELECT s.* FROM students s
-        JOIN enrollments e ON s.id = e.student_id
-        WHERE e.course_id = ? AND s.enrollment_status != 'Removed'
-        ORDER BY 
-            CASE s.role
-                WHEN 'Student' THEN 1
-                WHEN 'Lecturer' THEN 2
-                WHEN 'Teacher Assistant' THEN 3
-                WHEN 'Admin' THEN 4
-                ELSE 5
-            END,
-            s.join_date DESC
-    ''', (course_id,)).fetchall()
+    SELECT s.username, s.email, s.role, s.join_date, s.enrollment_status, s.id AS uni_id
+    FROM students s
+    JOIN enrollments e ON s.id = e.student_id
+    WHERE e.course_id = ? AND s.enrollment_status != 'Removed'
+    ORDER BY 
+        CASE s.role
+            WHEN 'Student' THEN 1
+            WHEN 'Lecturer' THEN 2
+            WHEN 'Teacher Assistant' THEN 3
+            WHEN 'Admin' THEN 4
+            ELSE 5
+        END,
+        s.join_date DESC
+''', (course_id,)).fetchall()
+
 
     conn.close()
 
     course = dict(course)
     users = [dict(user) for user in users_in_course]
 
-    # Template selection based on course name
+    # Template logic stays the same
     if "Software" in course["name"]:
         template = 'view_software.html'
     elif "Data Science" in course["name"]:
@@ -1351,7 +1641,12 @@ def view_course(course_id):
     else:
         template = 'view_generic.html'
 
+    print(f"✅ View Course '{course['name']}' — {len(users)} users found")
+    if users:
+        print(f"Sample user: {users[0]}")
+
     return render_template(template, course=course, users=users)
+
 
 # ====================
 # Route: Edit Course Page (Admin view)
@@ -1366,34 +1661,38 @@ def edit_course(course_id):
         students = request.form['students']
         lecturers = request.form['lecturers']
         status = request.form['status']
+        year = request.form['year']   # 🆕 Added this
 
         conn.execute('''
-            UPDATE courses
-            SET name = ?, code = ?, students = ?, lecturers = ?, status = ?
-            WHERE id = ?
-        ''', (name, code, students, lecturers, status, course_id))
+    UPDATE courses
+    SET name = ?, code = ?, students = ?, lecturers = ?, status = ?, year = ?
+    WHERE id = ?
+''', (name, code, students, lecturers, status, year, course_id))
+
         conn.commit()
         conn.close()
 
         return redirect(url_for('edit_course', course_id=course_id, success='Course updated successfully!'))
 
-    # Fetch course and all users (including 'Removed' for admin control)
+    # ✅ DO NOT exclude removed users here
     course = conn.execute('SELECT * FROM courses WHERE id = ?', (course_id,)).fetchone()
 
     users_in_course = conn.execute('''
-        SELECT s.* FROM students s
-        JOIN enrollments e ON s.id = e.student_id
-        WHERE e.course_id = ?
-        ORDER BY 
-            CASE s.role
-                WHEN 'Student' THEN 1
-                WHEN 'Lecturer' THEN 2
-                WHEN 'Teacher Assistant' THEN 3
-                WHEN 'Admin' THEN 4
-                ELSE 5
-            END,
-            s.join_date DESC
-    ''', (course_id,)).fetchall()
+    SELECT s.id, s.username, s.email, s.role, s.join_date, s.enrollment_status, s.id AS uni_id
+    FROM students s
+    JOIN enrollments e ON s.id = e.student_id
+    WHERE e.course_id = ?
+    ORDER BY 
+        CASE s.role
+            WHEN 'Student' THEN 1
+            WHEN 'Lecturer' THEN 2
+            WHEN 'Teacher Assistant' THEN 3
+            WHEN 'Admin' THEN 4
+            ELSE 5
+        END,
+        s.join_date DESC
+''', (course_id,)).fetchall()
+
 
     conn.close()
 
@@ -1401,7 +1700,18 @@ def edit_course(course_id):
         return "Course Not Found", 404
 
     course = dict(course)
-    users = [dict(user) for user in users_in_course]
+    users = [
+    dict(user) | {
+        'id': dict(user).get('id') or dict(user).get('uni_id') or 'N/A',
+        'uni_id': dict(user).get('uni_id') or dict(user).get('id') or 'N/A'
+    }
+    for user in users_in_course
+]
+
+
+
+
+
 
     if "Software" in course["name"]:
         template = 'edit_software.html'
@@ -1411,6 +1721,8 @@ def edit_course(course_id):
         template = 'edit_generic.html'
 
     return render_template(template, course=course, users=users, success=request.args.get('success'))
+
+
 
 # ====================
 # Route: Add New User to Course
@@ -1423,9 +1735,11 @@ def add_user(course_id):
     course_name = request.form['course_name']
     join_date = datetime.now().strftime('%Y-%m-%d')
 
+    # Generate initials for email
     initials = ''.join([part[0] for part in name.split()]).upper()
     random_number = random.randint(100000, 999999)
 
+    # Generate ID and email
     if role == 'Student':
         uni_id = f"SE{random_number}" if "Software" in course_name else f"DS{random_number}"
         email = f"{initials}{uni_id}@uni.com"
@@ -1436,12 +1750,14 @@ def add_user(course_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
+    # ✅ Insert student using their custom string ID (e.g. SE8946)
     cursor.execute('''
-        INSERT INTO students (uni_id, username, email, role, join_date, enrollment_status)
+        INSERT INTO students (id, username, email, role, join_date, enrollment_status)
         VALUES (?, ?, ?, ?, ?, ?)
     ''', (uni_id, name, email, role, join_date, enrollment_status))
 
-    student_id = cursor.lastrowid
+    # ✅ Use that same custom ID for enrollment
+    student_id = uni_id
 
     cursor.execute('''
         INSERT INTO enrollments (student_id, course_id)
@@ -1453,10 +1769,11 @@ def add_user(course_id):
 
     return redirect(url_for('edit_course', course_id=course_id, success='Person added successfully!'))
 
+
 # ====================
 # Route: Archive (Soft Delete) User
 # ====================
-@app.route('/course/<int:course_id>/delete_user/<int:user_id>', methods=['POST'])
+@app.route('/course/<int:course_id>/delete_user/<user_id>', methods=['POST'])
 def delete_user(course_id, user_id):
     conn = get_db_connection()
     conn.execute('''
@@ -1468,10 +1785,11 @@ def delete_user(course_id, user_id):
     conn.close()
     return redirect(url_for('edit_course', course_id=course_id, success='User archived successfully!'))
 
+
 # ====================
 # Route: Restore Archived User
 # ====================
-@app.route('/course/<int:course_id>/restore_user/<int:user_id>', methods=['POST'])
+@app.route('/course/<int:course_id>/restore_user/<user_id>', methods=['POST'])
 def restore_user(course_id, user_id):
     original_status = request.form.get('original_status', 'Active')
 
@@ -1485,6 +1803,201 @@ def restore_user(course_id, user_id):
     conn.close()
 
     return redirect(url_for('edit_course', course_id=course_id, success='User restored successfully!'))
+
+
+# ====================
+# courses/modules help
+# ====================
+@app.route('/seed_dashboard_data')
+def seed_dashboard_data():
+    import sqlite3
+    import random
+
+    conn = sqlite3.connect("courses.db")
+    cursor = conn.cursor()
+
+    # Create tables if not exist
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS dashboard_big_data (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        assignment_score INTEGER,
+        attendance INTEGER
+    )
+    ''')
+    
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS dashboard_web_systems (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        assignment_score INTEGER,
+        attendance INTEGER
+    )
+    ''')
+
+    # Get 2025 Data Science students
+    ds_students = cursor.execute('''
+    SELECT s.id, s.username
+    FROM students s
+    JOIN enrollments e ON s.id = e.student_id
+    JOIN courses c ON e.course_id = c.id
+    WHERE c.name LIKE '%Data Science%' AND c.year = 2025
+    ''').fetchall()
+
+    # Get 2025 Software Engineering students
+    se_students = cursor.execute('''
+    SELECT s.id, s.username
+    FROM students s
+    JOIN enrollments e ON s.id = e.student_id
+    JOIN courses c ON e.course_id = c.id
+    WHERE c.name LIKE '%Software Engineering%' AND c.year = 2025
+    ''').fetchall()
+
+    # Seed Big Data table
+    for student_id, name in ds_students:
+        score = random.randint(55, 95)
+        attendance = random.randint(65, 100)
+        cursor.execute('''
+        INSERT OR REPLACE INTO dashboard_big_data (id, name, assignment_score, attendance)
+        VALUES (?, ?, ?, ?)
+        ''', (student_id, name, score, attendance))
+
+    # Seed Web Systems table
+    for student_id, name in se_students:
+        score = random.randint(55, 95)
+        attendance = random.randint(65, 100)
+        cursor.execute('''
+        INSERT OR REPLACE INTO dashboard_web_systems (id, name, assignment_score, attendance)
+        VALUES (?, ?, ?, ?)
+        ''', (student_id, name, score, attendance))
+
+    conn.commit()
+    conn.close()
+
+    return "✅ Dashboard data seeded successfully!"
+
+
+############### admin students export
+@app.route('/admin/export_student/<student_id>')
+def export_student_data(student_id):
+    import pandas as pd
+    from io import BytesIO
+    import sqlite3
+    from student_profile_dashboard import module_meta, course_modules
+
+    conn = sqlite3.connect('courses.db')
+    student_query = """
+    SELECT s.*, c.name AS course_name, c.code AS course_code
+    FROM students s
+    JOIN enrollments e ON s.id = e.student_id
+    JOIN courses c ON c.id = e.course_id
+    WHERE s.id = ?
+    """
+    df = pd.read_sql(student_query, conn, params=(student_id,))
+    conn.close()
+
+    if df.empty:
+        return "Student not found."
+
+    student = df.iloc[0]
+    username = student["username"]
+    email = student["email"]
+    course = student["course_name"]
+    attendance = student["attendance"]
+    course_code = student["course_code"]
+
+    # Process module data
+    data_rows = []
+    modules = course_modules.get(course_code, [])
+
+    for mod_code in modules:
+        meta = module_meta.get(mod_code)
+        if not meta:
+            continue
+
+        module_name = meta["name"]
+        assignments = meta["assignments"]
+        exam_title = meta["exam"]
+
+        for i, assignment in enumerate(assignments):
+            key = f"a{i+1}"
+            score = student.get(f"{key}_score")
+            penalty = student.get(f"{key}_penalty") or "None"
+            status = student.get(f"{key}_status") or "Not Completed"
+
+            data_rows.append({
+                "Module": f"{module_name} ({mod_code})",
+                "Type": f"Assignment {i+1} – {assignment}",
+                "Score": score if score is not None else "",
+                "Penalty": penalty,
+                "Status": status
+            })
+
+        # Exam row
+        if exam_title:
+            exam_score = student.get("exam_score")
+            exam_status = student.get("exam_status") or "Not Completed"
+            score = exam_score if exam_status == "Fit to Sit" else ""
+            data_rows.append({
+                "Module": f"{module_name} ({mod_code})",
+                "Type": f"Exam – {exam_title}",
+                "Score": score,
+                "Penalty": "",
+                "Status": exam_status
+            })
+
+        # Final Grade
+        a1 = float(student.get("a1_score") or 0)
+        a2 = float(student.get("a2_score") or 0)
+        exam = float(student.get("exam_score") or 0)
+        final_grade = round((a1 * 0.25 + a2 * 0.25 + exam * 0.5), 2) if exam_title else round((a1 * 0.5 + a2 * 0.5), 2)
+
+        data_rows.append({
+            "Module": f"{module_name} ({mod_code})",
+            "Type": "Final Grade",
+            "Score": final_grade,
+            "Penalty": "",
+            "Status": ""
+        })
+
+    df_export = pd.DataFrame(data_rows)
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        # Summary sheet
+        summary_df = pd.DataFrame([
+            ["Name", username],
+            ["Email", email],
+            ["Course", course],
+            ["Attendance (%)", attendance]
+        ], columns=["Field", "Value"])
+        summary_df.to_excel(writer, index=False, sheet_name="Summary")
+
+        # Performance sheet
+        df_export.to_excel(writer, index=False, sheet_name="Performance")
+
+    output.seek(0)
+    filename = f"{username}_performance.xlsx"
+    return send_file(output, download_name=filename, as_attachment=True, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1511,6 +2024,16 @@ from student_attendance_insights import student_attendance_insights, init_studen
 from course_registers import init_course_registers
 from dashboard_admin import init_admin_dashboard
 from dash_course_dashboard import init_course_dashboard
+from dashboard_big_data import init_dashboard as init_big_data_dashboard
+from dashboard_web_systems import init_dashboard as init_web_systems_dashboard
+from dashboard_professional_practice import init_shared_module_dashboard
+from software_testing_dashboard import init_software_testing_dashboard
+from cloud_engineering_dashboard import init_cloud_engineering_dashboard
+from mlops_dashboard import init_mlops_dashboard
+from data_ethics_dashboard import init_data_ethics_dashboard
+from student_profile_dashboard import init_student_profile_dashboard
+
+
 
 # ✅ Initialize Dashboards (ONLY ONCE)
 init_student_dashboard(app)
@@ -1529,6 +2052,15 @@ init_student_attendance_insights(app)
 init_course_registers(app)
 init_admin_dashboard(app)
 init_course_dashboard(app)
+init_big_data_dashboard(app)
+init_web_systems_dashboard(app)
+init_shared_module_dashboard(app)
+init_software_testing_dashboard(app)
+init_cloud_engineering_dashboard(app)
+init_mlops_dashboard(app)
+init_data_ethics_dashboard(app)
+init_student_profile_dashboard(app)
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lecturer Directory</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin_navbar.css') }}">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f8f9fc;
+      color: #2c3e50;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .main-content {
+      margin-left: 220px;
+      padding: 50px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .page-title {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #34495e;
+      margin-bottom: 30px;
+    }
+
+    .filter-bar {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .filter-bar select {
+      padding: 8px 16px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    table {
+      width: 100%;
+      max-width: 1100px;
+      border-collapse: collapse;
+      background-color: #fff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 14px;
+      text-align: center;
+      border-bottom: 1px solid #eee;
+    }
+
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+    }
+
+    .details-table {
+      margin-top: 10px;
+      display: none;
+      border-top: 1px solid #ccc;
+    }
+
+    .pagination-controls {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .pagination-controls button {
+      padding: 6px 14px;
+      margin: 0 8px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .pagination-controls button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        margin-left: 0;
+        padding: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  {% include 'navbar_admin.html' %}
+
+  <div class="main-content">
+    <h1 class="page-title">Lecturer Directory</h1>
+
+    <div class="filter-bar">
+      <label for="courseFilter">Filter by Course:</label>
+      <select id="courseFilter" onchange="filterLecturers()">
+        <option value="all">All</option>
+        <option value="SE101">BSc Software Engineering</option>
+        <option value="DS102">BSc Data Science</option>
+      </select>
+    </div>
+
+    <table id="lecturerTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Course</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lecturer in lecturers %}
+          <tr data-course="{{ lecturer.course }}">
+            <td>{{ lecturer.id }}</td>
+            <td>{{ lecturer.name }}</td>
+            <td>{{ lecturer.course }}</td>
+            <td>
+              <button class="btn btn-primary btn-sm" onclick="toggleDetails('{{ loop.index }}')">View Details</button>
+            </td>
+          </tr>
+          <tr class="details-table" id="details-{{ loop.index }}">
+            <td colspan="4">
+              <table class="table table-sm table-bordered mt-2">
+                <thead class="thead-light">
+                  <tr>
+                    <th>Module</th>
+                    <th>Week</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for assign in lecturer.assignments %}
+                    <tr>
+                      <td>{{ assign.module }}</td>
+                      <td>{{ assign.week }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="pagination-controls">
+      <button onclick="prevPage()" id="prevBtn">Previous</button>
+      <span id="pageIndicator">Page 1</span>
+      <button onclick="nextPage()" id="nextBtn">Next</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const lecturers = Array.from(document.querySelectorAll("#lecturerTable tbody tr")).filter((_, i) => i % 2 === 0);
+    const lecturerData = lecturers.map(row => ({
+      id: row.children[0].textContent,
+      name: row.children[1].textContent,
+      course: row.children[2].textContent,
+      html: row.outerHTML + row.nextElementSibling.outerHTML,
+      courseCode: row.getAttribute("data-course")
+    }));
+
+    let currentPage = 1;
+    const rowsPerPage = 10;
+    let filteredLecturers = [...lecturerData];
+
+    function renderTable() {
+      const start = (currentPage - 1) * rowsPerPage;
+      const end = start + rowsPerPage;
+      document.querySelector("#lecturerTable tbody").innerHTML = filteredLecturers.slice(start, end).map(s => s.html).join("");
+
+      const totalPages = Math.ceil(filteredLecturers.length / rowsPerPage);
+      document.getElementById("pageIndicator").textContent = `Page ${currentPage} of ${totalPages}`;
+
+      document.getElementById("prevBtn").disabled = currentPage === 1;
+      document.getElementById("nextBtn").disabled = currentPage === totalPages;
+    }
+
+    function nextPage() {
+      const totalPages = Math.ceil(filteredLecturers.length / rowsPerPage);
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderTable();
+      }
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        renderTable();
+      }
+    }
+
+    function filterLecturers() {
+      const selected = document.getElementById("courseFilter").value;
+      filteredLecturers = selected === "all"
+        ? [...lecturerData]
+        : lecturerData.filter(s => s.courseCode === selected);
+      currentPage = 1;
+      renderTable();
+    }
+
+    function toggleDetails(index) {
+      const row = document.getElementById(`details-${index}`);
+      row.style.display = row.style.display === "none" || row.style.display === "" ? "table-row" : "none";
+    }
+
+    window.onload = () => {
+      filterLecturers();
+    };
+  </script>
+
+</body>
+</html>

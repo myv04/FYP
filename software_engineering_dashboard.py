@@ -1,11 +1,21 @@
 from flask import Blueprint
 import dash
 from dash import dcc, html, dash_table
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output
 import plotly.express as px
 import pandas as pd
+import copy
+
+# ✅ Load a fresh deep copy of the raw data (not modified elsewhere)
 from course_data import software_engineering_students
-from data_persistence import load_data, save_data
+raw_data = copy.deepcopy(software_engineering_students)
+
+# ✅ Force original statuses in case anything mutated them earlier
+for student in raw_data:
+    if student["a1_status"] == "Completed" and student["a1_penalty"]:
+        student["a1_status"] = "Completed"
+    if student["a2_status"] == "Completed" and student["a2_penalty"]:
+        student["a2_status"] = "Completed"
 
 software_engineering_dashboard = Blueprint("software_engineering_dashboard", __name__)
 
@@ -18,44 +28,46 @@ def init_software_engineering_dashboard(flask_app):
     )
 
     def calculate_final_grade(a1, a2, exam, p1, p2):
-        grade = (a1 * 0.25) + (a2 * 0.25) + (exam * 0.5)
+        try:
+            a1 = float(a1) if a1 else 0
+            a2 = float(a2) if a2 else 0
+            exam = float(exam) if exam else 0
+            grade = (a1 * 0.25) + (a2 * 0.25) + (exam * 0.5)
 
-        if "Lateness Penalty" in p1 or "Lateness Penalty" in p2:
-            grade *= 0.95
-        if "Word Count Penalty" in p1 or "Word Count Penalty" in p2:
-            grade *= 0.9
+            if isinstance(p1, str):
+                if "Lateness Penalty" in p1:
+                    grade *= 0.95
+                if "Word Count Penalty" in p1:
+                    grade *= 0.9
+            if isinstance(p2, str):
+                if "Lateness Penalty" in p2:
+                    grade *= 0.95
+                if "Word Count Penalty" in p2:
+                    grade *= 0.9
 
-        return round(grade, 2)
+            return round(grade, 2)
+        except Exception as e:
+            print(f"❌ Grade error: {e}")
+            return 0
 
-    def prepare_dataframe(data):
-        df = pd.DataFrame(data)
-        df["Final Grade"] = df.apply(lambda row: calculate_final_grade(
-            float(row.get("Assignment 1 (Bugs and Fixes)", 0)),
-            float(row.get("Assignment 2 (Software Architecture)", 0)),
-            float(row.get("Exam Score", 0)),
-            row.get("Assignment 1 Penalty", ""),
-            row.get("Assignment 2 Penalty", "")
-        ), axis=1)
-        return df
+    df = pd.DataFrame(raw_data)
+    df["Student"] = df["name"]
+    df["ID"] = df["id"]
+    df["Final Grade"] = df.apply(lambda row: calculate_final_grade(
+        row.get("a1_score"), row.get("a2_score"), row.get("exam_score"),
+        row.get("a1_penalty"), row.get("a2_penalty")
+    ), axis=1)
 
-    loaded = load_data("software_engineering")
-    if loaded:
-        df = prepare_dataframe(loaded)
-    else:
-        df = pd.DataFrame(software_engineering_students)
-        df["Student"] = df["name"]
-        df["ID"] = df["id"]
-        df["Attendance (%)"] = df["attendance"]
-        df["Exam Status"] = df["exam_status"]
-        df["Exam Score"] = df["exam_score"]
-        df["Assignment 1 (Bugs and Fixes)"] = df["a1_score"]
-        df["Assignment 1 Status"] = df["a1_status"]
-        df["Assignment 1 Penalty"] = df["a1_penalty"]
-        df["Assignment 2 (Software Architecture)"] = df["a2_score"]
-        df["Assignment 2 Status"] = df["a2_status"]
-        df["Assignment 2 Penalty"] = df["a2_penalty"]
-        df["Status"] = df["status"]
-        df = prepare_dataframe(df)
+    df["Attendance (%)"] = df["attendance"]
+    df["Exam Status"] = df["exam_status"]
+    df["Exam Score"] = df["exam_score"]
+    df["Assignment 1 (Bugs and Fixes)"] = df["a1_score"]
+    df["Assignment 1 Status"] = df["a1_status"]
+    df["Assignment 1 Penalty"] = df["a1_penalty"]
+    df["Assignment 2 (Software Architecture)"] = df["a2_score"]
+    df["Assignment 2 Status"] = df["a2_status"]
+    df["Assignment 2 Penalty"] = df["a2_penalty"]
+    df["Status"] = df["status"]
 
     column_order = [
         "ID", "Student", "Final Grade", "Attendance (%)", "Exam Status", "Exam Score",
@@ -68,7 +80,6 @@ def init_software_engineering_dashboard(flask_app):
         html.H1("📊 Software Engineering - Performance & Grades", style={"textAlign": "center"}),
 
         dcc.Graph(id="grades-fig"),
-
         dcc.Graph(id="attendance-fig"),
 
         html.H3("📈 Insights"),
@@ -80,28 +91,21 @@ def init_software_engineering_dashboard(flask_app):
         dcc.Dropdown(
             id="assignment-dropdown",
             options=[
-                {"label": "Assignment 1 (Bugs and Fixes) - 25%", "value": "Assignment 1 (Bugs and Fixes)"},
-                {"label": "Assignment 2 (Software Architecture) - 25%", "value": "Assignment 2 (Software Architecture)"}
+                {"label": "Assignment 1 (Bugs and Fixes)", "value": "Assignment 1 (Bugs and Fixes)"},
+                {"label": "Assignment 2 (Software Architecture)", "value": "Assignment 2 (Software Architecture)"}
             ],
             value="Assignment 1 (Bugs and Fixes)",
             clearable=False
         ),
 
         dcc.Graph(id="assignment-chart"),
-
         dcc.Graph(id="exam-fig"),
 
         html.H2("📜 Student Performance Table", style={"textAlign": "center", "margin-top": "30px"}),
 
-        html.Div([
-            html.Button("Edit", id="edit-button", n_clicks=0, style={'marginRight': '10px'}),
-            html.Button("Confirm Changes", id="confirm-button", n_clicks=0, style={'display': 'none', 'marginRight': '10px'}),
-            html.Button("Discard Changes", id="discard-button", n_clicks=0, style={'display': 'none'})
-        ], style={"textAlign": "center", "margin-bottom": "10px"}),
-
         dash_table.DataTable(
             id="data-table",
-            columns=[{"name": i, "id": i, "editable": False} for i in column_order],
+            columns=[{"name": i, "id": i} for i in column_order],
             data=df.to_dict("records"),
             sort_action="native",
             style_table={"margin": "auto", "width": "95%"},
@@ -109,7 +113,6 @@ def init_software_engineering_dashboard(flask_app):
             style_header={"backgroundColor": "#2980b9", "color": "white"}
         ),
 
-        dcc.Store(id='initial-table-data', data=df.to_dict('records')),
         dcc.Store(id='live-data', data=df.to_dict('records'))
     ])
 
@@ -125,11 +128,11 @@ def init_software_engineering_dashboard(flask_app):
     def update_all_figures(data):
         df_live = pd.DataFrame(data)
 
-        fig_grades = px.bar(df_live, x="Student", y="Final Grade", title="📊 Student Grades",
+        grades_fig = px.bar(df_live, x="Student", y="Final Grade", title="📊 Student Grades",
                             labels={"Final Grade": "Grade (%)"}, color="Final Grade", color_continuous_scale="Blues")
-        fig_grades.update_layout(xaxis={'categoryorder': 'total descending'})
+        grades_fig.update_layout(xaxis={'categoryorder': 'total descending'})
 
-        exam_fig = px.bar(df_live, x="Student", y="Exam Score", title="📝 Exam Scores (50% of Final Grade)",
+        exam_fig = px.bar(df_live, x="Student", y="Exam Score", title="📝 Exam Scores",
                           labels={"Exam Score": "Score (%)"}, color="Exam Score", color_continuous_scale="Reds")
         exam_fig.update_layout(xaxis={'categoryorder': 'total descending'})
 
@@ -150,7 +153,7 @@ def init_software_engineering_dashboard(flask_app):
         max_ = f"🏆 Highest Grade: {df_live['Final Grade'].max()}%"
         min_ = f"⚠️ Lowest Grade: {df_live['Final Grade'].min()}%"
 
-        return fig_grades, exam_fig, attendance_fig, avg, max_, min_
+        return grades_fig, exam_fig, attendance_fig, avg, max_, min_
 
     @dash_app.callback(
         Output("assignment-chart", "figure"),
@@ -159,50 +162,153 @@ def init_software_engineering_dashboard(flask_app):
     )
     def update_assignment_chart(selected_assignment, table_data):
         df_updated = pd.DataFrame(table_data)
-        fig = px.bar(df_updated, x="Student", y=selected_assignment, title=f"📑 {selected_assignment} (25%)",
+        fig = px.bar(df_updated, x="Student", y=selected_assignment, title=f"📑 {selected_assignment}",
                      labels={selected_assignment: "Score (%)"}, color=selected_assignment, color_continuous_scale="Oranges")
         fig.update_layout(xaxis={'categoryorder': 'total descending'})
         return fig
 
-    @dash_app.callback(
-        [Output("data-table", "columns"),
-         Output("confirm-button", "style"),
-         Output("discard-button", "style"),
-         Output("edit-button", "style")],
-        [Input("edit-button", "n_clicks"),
-         Input("confirm-button", "n_clicks"),
-         Input("discard-button", "n_clicks")],
-        [State("data-table", "columns")]
-    )
-    def toggle_edit_mode(edit_clicks, confirm_clicks, discard_clicks, existing_columns):
-        ctx = dash.callback_context
-        triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
-
-        if triggered_id == 'edit-button':
-            cols = [{"name": i['name'], "id": i['id'], "editable": True} for i in existing_columns]
-            return cols, {'display': 'inline-block'}, {'display': 'inline-block'}, {'display': 'none'}
-        else:
-            cols = [{"name": i['name'], "id": i['id'], "editable": False} for i in existing_columns]
-            return cols, {'display': 'none'}, {'display': 'none'}, {'display': 'inline-block'}
-
-    @dash_app.callback(
-        [Output("data-table", "data"), Output("live-data", "data")],
-        [Input("confirm-button", "n_clicks"),
-         Input("discard-button", "n_clicks")],
-        [State("data-table", "data"),
-         State("initial-table-data", "data")]
-    )
-    def update_table(confirm_clicks, discard_clicks, current_data, initial_data):
-        ctx = dash.callback_context
-        triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
-
-        if triggered_id == "confirm-button":
-            df_new = prepare_dataframe(current_data)
-            records = df_new.to_dict("records")
-            save_data(records, "software_engineering")
-            return records, records
-        elif triggered_id == "discard-button":
-            return initial_data, initial_data
-        return current_data, current_data
-
     return dash_app
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ✅ Exportable attendance average for use in admin dashboard
+def get_agile_attendance():
+    import pandas as pd
+    from course_data import software_engineering_students
+
+    df = pd.DataFrame(software_engineering_students)
+    if df.empty or "attendance" not in df.columns:
+        return 0
+
+    return round(df["attendance"].astype(float).mean(), 2)
+
+
+# ✅ Exportable grade average using consistent logic
+def get_agile_grade():
+    import pandas as pd
+    from course_data import software_engineering_students
+
+    def calculate_final_grade(a1, a2, exam, p1, p2):
+        try:
+            a1 = float(a1) if a1 is not None else 0
+            a2 = float(a2) if a2 is not None else 0
+            exam = float(exam) if exam is not None else 0
+
+            grade = (a1 * 0.25) + (a2 * 0.25) + (exam * 0.5)
+
+            if p1 and isinstance(p1, str):
+                if "Lateness Penalty" in p1:
+                    grade *= 0.95
+                if "Word Count Penalty" in p1:
+                    grade *= 0.9
+
+            if p2 and isinstance(p2, str):
+                if "Lateness Penalty" in p2:
+                    grade *= 0.95
+                if "Word Count Penalty" in p2:
+                    grade *= 0.9
+
+            return round(grade, 2)
+        except:
+            return 0
+
+    df = pd.DataFrame(software_engineering_students)
+    if df.empty:
+        return 0
+
+    df["Final Grade"] = df.apply(lambda row: calculate_final_grade(
+        row.get("a1_score"),
+        row.get("a2_score"),
+        row.get("exam_score"),
+        row.get("a1_penalty"),
+        row.get("a2_penalty")
+    ), axis=1)
+
+    return round(df["Final Grade"].mean(), 2)

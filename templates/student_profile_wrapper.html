@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Student Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin_navbar.css') }}">
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      background-color: #f4f6f9;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 20px 30px;
+    }
+
+    .dashboard-title {
+      font-size: 2rem;
+      margin-bottom: 20px;
+    }
+
+    .back-link {
+      font-size: 1rem;
+      color: #2980b9;
+      text-decoration: none;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .dashboard-container {
+      width: calc(100% - 240px); /* sidebar width offset */
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .dashboard-frame {
+      width: 100%;
+      height: 92vh;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  {% include 'navbar_admin.html' %}
+  <div class="main-content">
+    <a href="/admin/students" class="back-link">← Back to Student List</a>
+    <h1 class="dashboard-title">📘 Student Performance Dashboard</h1>
+
+    <div class="dashboard-container">
+      <iframe src="/student_profile_dashboard?id={{ student_id }}" class="dashboard-frame"></iframe>
+    </div>
+  </div>
+</body>
+</html>

@@ -5,17 +5,53 @@ import plotly.graph_objs as go
 import pandas as pd
 import sqlite3
 from datetime import datetime
-import random
 
-# Connect to SQLite database
+# ✅ Import attendance functions
+from software_engineering_dashboard import get_agile_attendance, get_agile_grade
+from data_science_dashboard import get_ml_attendance, get_ml_grade
+from dashboard_web_systems import get_web_systems_attendance, get_web_systems_grade
+from dashboard_big_data import get_big_data_attendance, get_big_data_grade
+from dashboard_professional_practice import get_professional_practice_attendance, get_professional_practice_grade
+from mlops_dashboard import get_mlops_attendance, get_mlops_grade
+from data_ethics_dashboard import get_data_ethics_attendance, get_data_ethics_grade
+from software_testing_dashboard import get_software_testing_attendance, get_software_testing_grade
+from cloud_engineering_dashboard import get_cloud_engineering_attendance, get_cloud_engineering_grade
+
+# ✅ Fetch real-time data
 def fetch_course_data():
     conn = sqlite3.connect('courses.db')
     conn.row_factory = sqlite3.Row
     courses = conn.execute('SELECT * FROM courses').fetchall()
-    conn.close()
-    return courses
+    result = []
 
-# Custom function to create gauge chart
+    for course in courses:
+        course_id = course['id']
+        student_count = conn.execute('''
+            SELECT COUNT(*) FROM students s
+            JOIN enrollments e ON s.id = e.student_id
+            WHERE e.course_id = ? AND s.role = 'Student' AND s.enrollment_status != 'Removed'
+        ''', (course_id,)).fetchone()[0]
+
+        lecturer_count = conn.execute('''
+            SELECT COUNT(*) FROM students s
+            JOIN enrollments e ON s.id = e.student_id
+            WHERE e.course_id = ? AND s.role = 'Lecturer' AND s.enrollment_status != 'Removed'
+        ''', (course_id,)).fetchone()[0]
+
+        result.append({
+            'name': course['name'],
+            'year': course['year'],
+            'students': student_count,
+            'lecturers': lecturer_count,
+            'attendance': course['attendance'],
+            'average_grade': course['average_grade'],
+            'satisfaction': course['satisfaction']
+        })
+
+    conn.close()
+    return result
+
+# 📊 Gauge chart helper
 def create_gauge_chart(value, title):
     return go.Figure(go.Indicator(
         mode="gauge+number",
@@ -23,107 +59,80 @@ def create_gauge_chart(value, title):
         title={'text': title},
         domain={'x': [0, 1], 'y': [0, 1]},
         gauge={
-            'axis': {'range': [0, 5], 'tickwidth': 1, 'tickcolor': "darkblue"},
+            'axis': {'range': [0, 5]},
             'bar': {'color': "darkblue"},
             'bgcolor': "white",
-            'borderwidth': 2,
-            'bordercolor': "gray",
             'steps': [
                 {'range': [0, 1], 'color': 'red'},
                 {'range': [1, 2], 'color': 'orange'},
                 {'range': [2, 3], 'color': 'yellow'},
                 {'range': [3, 4], 'color': 'lightgreen'},
                 {'range': [4, 5], 'color': 'green'}
-            ],
+            ]
         }
     ))
 
-# Initialize Dash app
+# 🔧 Dash app setup
 dash_admin = dash.Dash(
     __name__,
     routes_pathname_prefix="/dashboard_admin/",
     suppress_callback_exceptions=True
 )
 
-# Initial data fetching
-courses_data = fetch_course_data()
+dash_admin.layout = html.Div(style={'padding': '20px', 'maxWidth': '1200px', 'margin': '0 auto'}, children=[
+    html.H1("Admin Dashboard: Data Science & Software Engineering", style={'textAlign': 'center'}),
 
-# Prepare data
-courses = [course['name'].replace('BSc ', '') for course in courses_data]
-students = [course['students'] for course in courses_data]
-lecturers = [course['lecturers'] for course in courses_data]
-attendance = [course['attendance'] for course in courses_data]
-average_grade = [course['average_grade'] for course in courses_data]
-satisfaction = [course['satisfaction'] for course in courses_data]
-
-# Prepare satisfaction mapping
-satisfaction_map = {course: sat for course, sat in zip(courses, satisfaction)}
-
-# Layout for Admin Dashboard
-dash_admin.layout = html.Div(style={'padding': '20px', 'maxWidth': '1200px', 'margin': '0 auto', 'fontFamily': 'Arial, sans-serif'}, children=[
-    html.H1("Admin Dashboard: Data Science & Software Engineering", style={'textAlign': 'center', 'color': '#2c3e50', 'marginBottom': '30px'}),
-
-    # Dashboard Statistics
     html.Div([
         html.H2("📊 Dashboard Statistics"),
-        html.Div(style={'display': 'flex', 'justifyContent': 'space-between', 'marginBottom': '20px'}, children=[
-            html.Div(style={'backgroundColor': '#3498db', 'padding': '20px', 'borderRadius': '10px', 'color': 'white', 'flex': '1', 'margin': '0 10px', 'textAlign': 'center'}, children=[
-                html.H4("Total Students"),
-                html.H2(id='total-students')
+        html.Div(style={'display': 'flex', 'justifyContent': 'space-between'}, children=[
+            html.Div(style={'backgroundColor': '#3498db', 'padding': '20px', 'color': 'white', 'flex': 1, 'margin': '0 10px'}, children=[
+                html.H4("Total Students"), html.H2(id='total-students')
             ]),
-            html.Div(style={'backgroundColor': '#2ecc71', 'padding': '20px', 'borderRadius': '10px', 'color': 'white', 'flex': '1', 'margin': '0 10px', 'textAlign': 'center'}, children=[
-                html.H4("Total Lecturers"),
-                html.H2(id='total-lecturers')
+            html.Div(style={'backgroundColor': '#2ecc71', 'padding': '20px', 'color': 'white', 'flex': 1, 'margin': '0 10px'}, children=[
+                html.H4("Total Lecturers"), html.H2(id='total-lecturers')
             ]),
-            html.Div(style={'backgroundColor': '#e74c3c', 'padding': '20px', 'borderRadius': '10px', 'color': 'white', 'flex': '1', 'margin': '0 10px', 'textAlign': 'center'}, children=[
-                html.H4("Courses"),
-                html.H2(id='total-courses')
+            html.Div(style={'backgroundColor': '#e74c3c', 'padding': '20px', 'color': 'white', 'flex': 1, 'margin': '0 10px'}, children=[
+                html.H4("Courses"), html.H2(id='total-courses')
             ]),
         ])
     ]),
 
-    # Quick Actions
     html.Div([
         html.H2("🚀 Quick Actions"),
         html.Button("Add New Student/Lecturer", id="add-user-btn", n_clicks=0),
         html.Button("View Recent Enrollments", id="view-enrollments-btn", n_clicks=0),
         html.Button("Review Flagged Issues", id="review-issues-btn", n_clicks=0),
         html.Button("Schedule Event", id="schedule-event-btn", n_clicks=0)
-    ], style={'marginBottom': '20px'}),
+    ], style={'marginTop': '20px'}),
 
-    # Charts & Reports
     html.Div([
         html.H2("📈 Charts & Reports"),
         dcc.Graph(id='user-count-chart'),
         dcc.Graph(id='attendance-chart'),
-        dcc.Graph(id='grade-trend-chart')
+        dcc.Graph(id='grade-bar-chart')
     ]),
 
-    # Student Satisfaction
     html.Div([
         html.H2("🎓 Student Satisfaction"),
         html.Div([
             html.Div([dcc.Graph(id='satisfaction-gauge-ds')], style={'width': '50%', 'display': 'inline-block'}),
             html.Div([dcc.Graph(id='satisfaction-gauge-se')], style={'width': '50%', 'display': 'inline-block'})
         ])
-    ], style={'marginTop': '20px'}),
+    ]),
 
-    # Notifications & Logs
     html.Div([
         html.H2("🔔 Notifications & Logs"),
         html.Ul([
             html.Li("Upcoming deadline: Final project submission (2 days left)"),
             html.Li("Warning: 5 students have attendance below 75%"),
             html.Li("New user registered: John Doe (Data Science)")
-        ]),
+        ])
     ], style={'marginTop': '20px'}),
 
-    # Last Updated Time
     html.Div(id='last-updated', style={'textAlign': 'right', 'marginTop': '20px', 'color': '#7f8c8d'})
 ])
 
-# ✅ Callbacks
-
+# 🔄 Stats + Last Updated
 @dash_admin.callback(
     [Output('total-students', 'children'),
      Output('total-lecturers', 'children'),
@@ -132,99 +141,109 @@ dash_admin.layout = html.Div(style={'padding': '20px', 'maxWidth': '1200px', 'ma
     [Input('add-user-btn', 'n_clicks')]
 )
 def update_stats(_):
-    courses_data = fetch_course_data()
-    total_students = sum(course['students'] for course in courses_data)
-    total_lecturers = sum(course['lecturers'] for course in courses_data)
-    total_courses = len(courses_data)
-
+    data = fetch_course_data()
     return (
-        f"{total_students}",
-        f"{total_lecturers}",
-        f"{total_courses}",
+        sum(course['students'] for course in data),
+        sum(course['lecturers'] for course in data),
+        len(data),
         f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     )
 
+# 📊 User Count Chart
 @dash_admin.callback(Output('user-count-chart', 'figure'), [Input('add-user-btn', 'n_clicks')])
 def update_user_count_chart(_):
-    courses_data = fetch_course_data()
-    course_names = [course['name'].replace('BSc ', '') for course in courses_data]
-    students = [course['students'] for course in courses_data]
-    lecturers = [course['lecturers'] for course in courses_data]
+    data = fetch_course_data()
+    labels = [f"{c['name'].replace('BSc ', '')} ({c['year']})" for c in data]
+    students = [c['students'] for c in data]
+    lecturers = [c['lecturers'] for c in data]
 
     fig = go.Figure(data=[
-        go.Bar(name='Students', x=course_names, y=students),
-        go.Bar(name='Lecturers', x=course_names, y=lecturers)
+        go.Bar(name='Students', x=labels, y=students),
+        go.Bar(name='Lecturers', x=labels, y=lecturers)
     ])
     fig.update_layout(
-        title="User Count by Course and Role",
-        xaxis_title="Course",
+        title="User Count by Course and Year",
+        xaxis_title="Course (Year)",
         yaxis_title="Number of Users",
         barmode='group',
         legend_title="User Role"
     )
     return fig
 
+# 📉 Attendance Chart
 @dash_admin.callback(Output('attendance-chart', 'figure'), [Input('add-user-btn', 'n_clicks')])
 def update_attendance_chart(_):
-    courses_data = fetch_course_data()
-    course_names = [course['name'].replace('BSc ', '') for course in courses_data]
-    present = [course['attendance'] for course in courses_data]
-    absent = [100 - course['attendance'] for course in courses_data]
+    modules = [
+        ("DS201 - Agile Development", get_agile_attendance()),
+        ("DS101 - Machine Learning", get_ml_attendance()),
+        ("SE202 - Web Systems", get_web_systems_attendance()),
+        ("DS102 - Big Data", get_big_data_attendance()),
+        ("DSSEP1 - Professional Practice", get_professional_practice_attendance()),
+        ("DS301 - MLOps", get_mlops_attendance()),
+        ("DS302 - Data Ethics", get_data_ethics_attendance()),
+        ("SE303 - Software Testing", get_software_testing_attendance()),
+        ("SE204 - Cloud Engineering", get_cloud_engineering_attendance())
+    ]
+    labels = [f"{code.split(' - ')[0]}<br><b>{code.split(' - ')[1]}</b>" for code, _ in modules]
+    attendance = [score for _, score in modules]
+    absent = [100 - score for score in attendance]
 
-    fig = go.Figure(data=[
-        go.Bar(name='Present', x=course_names, y=present, marker_color='blue'),
-        go.Bar(name='Absent', x=course_names, y=absent, marker_color='red')
+    fig = go.Figure([
+        go.Bar(name="Present (%)", x=labels, y=attendance, marker_color="green"),
+        go.Bar(name="Absent (%)", x=labels, y=absent, marker_color="red")
     ])
     fig.update_layout(
-        title="Course Attendance Overview",
-        xaxis_title="Course",
-        yaxis_title="Attendance Percentage (%)",
-        barmode='stack',
-        yaxis=dict(range=[0, 100]),
-        legend_title="Attendance Status"
+        barmode="stack",
+        title="🧮 Average Attendance by Module (2025)",
+        yaxis=dict(title="Attendance %", range=[0, 100]),
+        xaxis=dict(title="Module", tickangle=0),
+        legend_title="Status"
     )
     return fig
 
-@dash_admin.callback(Output('grade-trend-chart', 'figure'), [Input('add-user-btn', 'n_clicks')])
-def update_grade_trend_chart(_):
-    courses_data = fetch_course_data()
-    course_names = [course['name'].replace('BSc ', '') for course in courses_data]
-    grade_map = {course['name'].replace('BSc ', ''): course['average_grade'] for course in courses_data}
+# 📈 Grade Chart
+@dash_admin.callback(Output('grade-bar-chart', 'figure'), [Input('add-user-btn', 'n_clicks')])
+def update_grade_chart(_):
+    modules = [
+        ("DS201 - Agile Development", get_agile_grade()),
+        ("DS101 - Machine Learning", get_ml_grade()),
+        ("SE202 - Web Systems", get_web_systems_grade()),
+        ("DS102 - Big Data", get_big_data_grade()),
+        ("DSSEP1 - Professional Practice", get_professional_practice_grade()),
+        ("DS301 - MLOps", get_mlops_grade()),
+        ("DS302 - Data Ethics", get_data_ethics_grade()),
+        ("SE303 - Software Testing", get_software_testing_grade()),
+        ("SE204 - Cloud Engineering", get_cloud_engineering_grade())
+    ]
+    labels = [f"{code.split(' - ')[0]}<br><b>{code.split(' - ')[1]}</b>" for code, _ in modules]
+    values = [grade for _, grade in modules]
 
-    months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-    traces = []
-    for course in course_names:
-        grades = [round(grade_map[course] + random.uniform(-5, 5), 1) for _ in months]
-        traces.append(go.Scatter(x=months, y=grades, mode='lines+markers', name=course))
-
-    fig = go.Figure(data=traces)
+    fig = go.Figure([
+        go.Bar(name="Average Grade (%)", x=labels, y=values, marker_color="mediumpurple")
+    ])
     fig.update_layout(
-        title="Average Grade Trends by Month",
-        xaxis_title="Month",
-        yaxis_title="Average Grade (%)",
-        legend_title="Course",
-        yaxis=dict(range=[40, 100])
+        title="📉 Average Grade by Module (2025)",
+        yaxis=dict(title="Grade %", range=[0, 100]),
+        xaxis=dict(title="Module")
     )
     return fig
 
+# 🎓 Satisfaction Gauges
 @dash_admin.callback(Output('satisfaction-gauge-ds', 'figure'), [Input('add-user-btn', 'n_clicks')])
 def update_satisfaction_gauge_ds(_):
-    courses_data = fetch_course_data()
-    for course in courses_data:
+    for course in fetch_course_data():
         if "Data Science" in course['name']:
             return create_gauge_chart(course['satisfaction'], "Data Science Satisfaction")
     return create_gauge_chart(0, "Data Science Satisfaction")
 
 @dash_admin.callback(Output('satisfaction-gauge-se', 'figure'), [Input('add-user-btn', 'n_clicks')])
 def update_satisfaction_gauge_se(_):
-    courses_data = fetch_course_data()
-    for course in courses_data:
+    for course in fetch_course_data():
         if "Software Engineering" in course['name']:
             return create_gauge_chart(course['satisfaction'], "Software Engineering Satisfaction")
     return create_gauge_chart(0, "Software Engineering Satisfaction")
 
-# ✅ Function to integrate with Flask
+# 🔌 Integrate with Flask
 def init_admin_dashboard(server):
     dash_admin.init_app(server)
 

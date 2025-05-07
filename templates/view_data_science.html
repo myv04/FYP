@@ -1,188 +1,200 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>View Data Science Course</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='lecturer_navbar.css') }}" />
-  <style>
-    /* Your original styles preserved */
-    body, html { margin: 0; padding: 0; height: 100%; width: 100%; background-color: #f4f6f8; display: flex; flex-direction: column; }
-    .main-content { margin-left: 250px; padding: 20px; flex: 1; }
-    .container { width: 100%; max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 0, 0, 0.1); }
-    h1, h2 { text-align: center; color: #333; }
-    p { text-align: center; font-size: 16px; margin: 5px 0; }
-    table { width: 100%; border-collapse: collapse; margin-top: 30px; }
-    th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
-    th { background-color: #3498db; color: white; cursor: pointer; }
-    tr:nth-child(even) { background-color: #f9f9f9; }
-    tbody tr:hover { background-color: #f1f1f1; cursor: pointer; }
-    .back-link { display: block; margin-bottom: 20px; color: #3498db; text-decoration: none; font-weight: bold; }
-    .back-link:hover { text-decoration: underline; }
-    .role-badge { padding: 4px 8px; border-radius: 5px; color: white; font-weight: bold; display: inline-block; }
-    .role-student { background-color: #3498db; }
-    .role-lecturer { background-color: #2ecc71; }
-    .role-ta { background-color: #f1c40f; }
-    .role-admin { background-color: #e74c3c; }
-    #searchInput, #roleFilter { margin-bottom: 20px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; margin-right: 10px; }
-    #pagination { margin-top: 20px; text-align: center; }
-    .page-link { margin: 0 5px; cursor: pointer; color: #3498db; font-weight: bold; }
-    .page-link:hover { text-decoration: underline; }
-    #recordCount { margin-top: 10px; text-align: center; font-weight: bold; }
-    .selected-row { background-color: #ffeeba !important; }
-  </style>
-</head>
-<body>
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>View Data Science Course</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='lecturer_navbar.css') }}" />
+    <style>
+      /* Your original styles preserved */
+      body, html { margin: 0; padding: 0; height: 100%; width: 100%; background-color: #f4f6f8; display: flex; flex-direction: column; }
+      .main-content { margin-left: 250px; padding: 20px; flex: 1; }
+      .container { width: 100%; max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 0, 0, 0.1); }
+      h1, h2 { text-align: center; color: #333; }
+      p { text-align: center; font-size: 16px; margin: 5px 0; }
+      table { width: 100%; border-collapse: collapse; margin-top: 30px; }
+      th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+      th { background-color: #3498db; color: white; cursor: pointer; }
+      tr:nth-child(even) { background-color: #f9f9f9; }
+      tbody tr:hover { background-color: #f1f1f1; cursor: pointer; }
+      .back-link { display: block; margin-bottom: 20px; color: #3498db; text-decoration: none; font-weight: bold; }
+      .back-link:hover { text-decoration: underline; }
+      .role-badge { padding: 4px 8px; border-radius: 5px; color: white; font-weight: bold; display: inline-block; }
+      .role-student { background-color: #3498db; }
+      .role-lecturer { background-color: #2ecc71; }
+      .role-ta { background-color: #f1c40f; }
+      .role-admin { background-color: #e74c3c; }
+      #searchInput, #roleFilter { margin-bottom: 20px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; margin-right: 10px; }
+      #pagination { margin-top: 20px; text-align: center; }
+      .page-link { margin: 0 5px; cursor: pointer; color: #3498db; font-weight: bold; }
+      .page-link:hover { text-decoration: underline; }
+      #recordCount { margin-top: 10px; text-align: center; font-weight: bold; }
+      .selected-row { background-color: #ffeeba !important; }
+    </style>
+  </head>
+  <body>
 
-  {% include 'navbar_admin.html' %}
+    {% include 'navbar_admin.html' %}
 
-  <div class="main-content">
-    <div class="container">
-      <a href="{{ url_for('course_management') }}" class="back-link">⬅ Back to Courses</a>
+    <div class="main-content">
+      <div class="container">
+        <a href="{{ url_for('course_management') }}" class="back-link">⬅ Back to Courses</a>
 
-      <h1>📊 {{ course['name'] }}</h1>
+        <h1>📊 {{ course['name'] }}</h1>
 
-      <p><strong>Course Code:</strong> {{ course['code'] }}</p>
-      <p><strong>Students Enrolled:</strong> {{ course['students'] }}</p>
-      <p><strong>Lecturers Assigned:</strong> {{ course['lecturers'] }}</p>
-      <p><strong>Status:</strong> {{ course['status'] }}</p>
+        <p><strong>Course Code:</strong> {{ course['code'] }}</p>
+        <p><strong>Students Enrolled:</strong> {{ course['students'] }}</p>
+        <p><strong>Lecturers Assigned:</strong> {{ course['lecturers'] }}</p>
+        <p><strong>Status:</strong> {{ course['status'] }}</p>
 
-      <input type="text" id="searchInput" placeholder="Search by name, UNI ID or role..." onkeyup="applyFilters()">
-      <select id="roleFilter" onchange="applyFilters()">
-        <option value="">All Roles</option>
-        <option value="Student">Student</option>
-        <option value="Lecturer">Lecturer</option>
-        <option value="Teacher Assistant">Teacher Assistant</option>
-        <option value="Admin">Admin</option>
-      </select>
+        <input type="text" id="searchInput" placeholder="Search by name, UNI ID or role..." onkeyup="applyFilters()">
+        <select id="roleFilter" onchange="applyFilters()">
+          <option value="">All Roles</option>
+          <option value="Student">Student</option>
+          <option value="Lecturer">Lecturer</option>
+          <option value="Teacher Assistant">Teacher Assistant</option>
+          <option value="Admin">Admin</option>
+        </select>
 
-      <h2>👥 People Enrolled</h2>
-      <table id="dataTable">
-        <thead>
-          <tr>
-            <th>UNI ID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Join Date</th>
-            <th>Enrollment Status</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+        <h2>👥 People Enrolled</h2>
+        <table id="dataTable">
+          <thead>
+            <tr>
+              <th>UNI ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Join Date</th>
+              <th>Enrollment Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+            <tr>
+              <td>{{ user['uni_id'] }}</td>
+              <td>{{ user['username'] }}</td>
+              <td>{{ user['email'] }}</td>
+              <td>{{ user['role'] }}</td>
+              <td>{{ user['join_date'] }}</td>
+              <td>{{ user['enrollment_status'] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
 
-      <div id="recordCount"></div>
-      <div id="pagination"></div>
+        <div id="recordCount"></div>
+        <div id="pagination"></div>
 
+      </div>
     </div>
-  </div>
 
-  <script>
-    const originalData = [
-      {% for user in users %}
-      {
-        uni_id: "{{ user['uni_id'] }}",
-        username: "{{ user['username'] }}",
-        email: "{{ user['email'] }}",
-        role: "{{ user['role'] }}",
-        join_date: "{{ user['join_date'] }}",
-        enrollment_status: "{{ user['enrollment_status'] }}"
-      },
-      {% endfor %}
-    ];
+    <script>
+      const originalData = [
+  {% for user in users %}
+  {
+    uni_id: "{{ user['uni_id'] }}",
+    username: "{{ user['username'] }}",
+    email: "{{ user['email'] }}",
+    role: "{{ user['role'] }}",
+    join_date: "{{ user['join_date'] }}",
+    enrollment_status: "{{ user['enrollment_status'] }}"
+  },
+  {% endfor %}
+];
 
-    let filteredData = [...originalData];
-    let currentPage = 1;
-    const rowsPerPage = 50;
 
-    function applyFilters() {
-      const searchInput = document.getElementById("searchInput").value.toLowerCase();
-      const roleFilter = document.getElementById("roleFilter").value;
+      let filteredData = [...originalData];
+      let currentPage = 1;
+      const rowsPerPage = 50;
 
-      filteredData = originalData.filter(user => {
-        const matchesSearch =
-          user.uni_id.toLowerCase().includes(searchInput) ||
-          user.username.toLowerCase().includes(searchInput) ||
-          user.email.toLowerCase().includes(searchInput) ||
-          user.role.toLowerCase().includes(searchInput);
+      function applyFilters() {
+        const searchInput = document.getElementById("searchInput").value.toLowerCase();
+        const roleFilter = document.getElementById("roleFilter").value;
 
-        const matchesRole = !roleFilter || user.role === roleFilter;
+        filteredData = originalData.filter(user => {
+          const matchesSearch =
+            user.uni_id.toLowerCase().includes(searchInput) ||
+            user.username.toLowerCase().includes(searchInput) ||
+            user.email.toLowerCase().includes(searchInput) ||
+            user.role.toLowerCase().includes(searchInput);
 
-        return matchesSearch && matchesRole;
-      });
+          const matchesRole = !roleFilter || user.role === roleFilter;
 
-      currentPage = 1;
-      renderTable();
-    }
+          return matchesSearch && matchesRole;
+        });
 
-    function renderTable() {
-      const tbody = document.querySelector("#dataTable tbody");
-      tbody.innerHTML = "";
-
-      const start = (currentPage - 1) * rowsPerPage;
-      const end = start + rowsPerPage;
-      const pageData = filteredData.slice(start, end);
-
-      pageData.forEach(user => {
-        const row = tbody.insertRow();
-        row.onclick = () => highlightRow(row);
-
-        row.insertCell().textContent = user.uni_id;
-        row.insertCell().textContent = user.username;
-        row.insertCell().textContent = user.email;
-
-        const roleCell = row.insertCell();
-        const span = document.createElement("span");
-        span.classList.add("role-badge");
-        if (user.role === "Student") span.classList.add("role-student");
-        if (user.role === "Lecturer") span.classList.add("role-lecturer");
-        if (user.role === "Teacher Assistant") span.classList.add("role-ta");
-        if (user.role === "Admin") span.classList.add("role-admin");
-        span.textContent = user.role;
-        roleCell.appendChild(span);
-
-        row.insertCell().textContent = user.join_date;
-        row.insertCell().textContent = user.enrollment_status;
-      });
-
-      document.getElementById("recordCount").textContent =
-        filteredData.length > 0
-          ? `Showing ${Math.min(end, filteredData.length)} of ${filteredData.length} records`
-          : "No matching records found.";
-
-      renderPagination();
-    }
-
-    function renderPagination() {
-      const pagination = document.getElementById("pagination");
-      pagination.innerHTML = "";
-      const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-
-      if (totalPages <= 1) return;
-
-      for (let i = 1; i <= totalPages; i++) {
-        const pageLink = document.createElement("span");
-        pageLink.className = "page-link";
-        if (i === currentPage) pageLink.style.fontWeight = "bold";
-
-        pageLink.textContent = i;
-        pageLink.onclick = () => {
-          currentPage = i;
-          renderTable();
-        };
-        pagination.appendChild(pageLink);
+        currentPage = 1;
+        renderTable();
       }
-    }
 
-    function highlightRow(row) {
-      document.querySelectorAll("#dataTable tbody tr").forEach(r => r.classList.remove("selected-row"));
-      row.classList.add("selected-row");
-    }
+      function renderTable() {
+        const tbody = document.querySelector("#dataTable tbody");
+        tbody.innerHTML = "";
 
-    document.addEventListener("DOMContentLoaded", () => {
-      renderTable();
-    });
-  </script>
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const pageData = filteredData.slice(start, end);
 
-</body>
-</html>
+        pageData.forEach(user => {
+          const row = tbody.insertRow();
+          row.onclick = () => highlightRow(row);
+
+          row.insertCell().textContent = user.uni_id;
+          row.insertCell().textContent = user.username;
+          row.insertCell().textContent = user.email;
+
+          const roleCell = row.insertCell();
+          const span = document.createElement("span");
+          span.classList.add("role-badge");
+          if (user.role === "Student") span.classList.add("role-student");
+          if (user.role === "Lecturer") span.classList.add("role-lecturer");
+          if (user.role === "Teacher Assistant") span.classList.add("role-ta");
+          if (user.role === "Admin") span.classList.add("role-admin");
+          span.textContent = user.role;
+          roleCell.appendChild(span);
+
+          row.insertCell().textContent = user.join_date;
+          row.insertCell().textContent = user.enrollment_status;
+        });
+
+        document.getElementById("recordCount").textContent =
+          filteredData.length > 0
+            ? `Showing ${Math.min(end, filteredData.length)} of ${filteredData.length} records`
+            : "No matching records found.";
+
+        renderPagination();
+      }
+
+      function renderPagination() {
+        const pagination = document.getElementById("pagination");
+        pagination.innerHTML = "";
+        const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+
+        if (totalPages <= 1) return;
+
+        for (let i = 1; i <= totalPages; i++) {
+          const pageLink = document.createElement("span");
+          pageLink.className = "page-link";
+          if (i === currentPage) pageLink.style.fontWeight = "bold";
+
+          pageLink.textContent = i;
+          pageLink.onclick = () => {
+            currentPage = i;
+            renderTable();
+          };
+          pagination.appendChild(pageLink);
+        }
+      }
+
+      function highlightRow(row) {
+        document.querySelectorAll("#dataTable tbody tr").forEach(r => r.classList.remove("selected-row"));
+        row.classList.add("selected-row");
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        renderTable();
+      });
+    </script>
+
+  </body>
+  </html>
