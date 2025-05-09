@@ -39,7 +39,7 @@ import json
 from flask import send_file, make_response
 import pdfkit  # 👈 Add this
 from student_profile_dashboard import course_modules, module_meta
-
+import io
 # 👇 Add this right after your imports
 path_wkhtmltopdf = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
 config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
@@ -221,6 +221,92 @@ def admin_lecturers():
         })
 
     return render_template('lecturers.html', lecturers=list(lecturers.values()))
+
+
+@app.route("/admin/lecturer_dashboard/<lecturer_id>")
+def admin_lecturer_dashboard(lecturer_id):
+    import sqlite3
+    import random
+
+    module_meta = {
+        "SE201": {"weeks": ["Sprint Planning", "Daily Standups", "Backlog Grooming", "Scrum Events", "Velocity Tracking", "Agile Metrics", "Burndown Charts", "Product Increments", "Retrospectives", "Agile Estimation", "Kanban vs Scrum", "Agile Wrap-up"]},
+        "SE202": {"weeks": ["HTML Basics", "CSS Styling", "Responsive Design", "JavaScript DOM", "Forms and Validation", "Web Hosting", "REST APIs", "Frontend Frameworks", "Authentication", "Web Security", "Debugging Tools", "Deployment"]},
+        "SE203": {"weeks": ["Testing Basics", "Unit Tests", "Mocks and Stubs", "Integration Testing", "System Testing", "Acceptance Testing", "Test Automation", "Bug Tracking", "Regression Testing", "Performance Testing", "Security Testing", "Test Reporting"]},
+        "SE204": {"weeks": ["Cloud Basics", "IaaS & PaaS", "Deployment Models", "Cloud Storage", "Load Balancing", "Auto-scaling", "Monitoring Tools", "CI/CD Pipelines", "Containers", "Security in Cloud", "Cloud Costing", "Capstone Demo"]},
+        "DS101": {"weeks": ["Data Cleaning", "Feature Engineering", "Model Selection", "Supervised Learning", "Unsupervised Learning", "Neural Networks", "Evaluation Metrics", "Model Deployment", "Overfitting & Underfitting", "Hyperparameter Tuning", "Bias-Variance Tradeoff", "Final Review"]},
+        "DS102": {"weeks": ["Intro to Big Data", "Hadoop Ecosystem", "Spark Basics", "Data Lakes & Warehouses", "Data Ingestion", "ETL Pipelines", "MapReduce", "Stream Processing", "Data Storage", "Scalability", "Big Data Tools", "Case Study"]},
+        "DS203": {"weeks": ["DevOps & MLOps", "Model Deployment", "API Integration", "Continuous Delivery", "Dockerization", "Monitoring Models", "Data Drift", "Model Logging", "Scaling Inference", "Deployment Tools", "Model Governance", "Final Review"]},
+        "DS204": {"weeks": ["Data Ethics Intro", "Bias in AI", "Fairness Metrics", "Case Studies", "Consent Mechanisms", "GDPR", "Data Security", "Responsible AI", "Transparency", "Accountability", "Audit Frameworks", "Wrap-Up"]}
+    }
+
+    conn = sqlite3.connect("courses.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT DISTINCT lecturer_id, lecturer_name, course_code
+        FROM lecturer_assignments
+        WHERE lecturer_id = ?
+    """, (lecturer_id,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return "Lecturer not found", 404
+
+    lecturer_id, lecturer_name, course_code = row
+
+    cursor.execute("""
+        SELECT module_code, module_week
+        FROM lecturer_assignments
+        WHERE lecturer_id = ?
+    """, (lecturer_id,))
+    assignments = cursor.fetchall()
+    conn.close()
+
+    week_data = []
+    for mod, week in assignments:
+        weeks_list = module_meta.get(mod, {}).get("weeks", [])
+        try:
+            week_index = weeks_list.index(week) + 1
+        except ValueError:
+            week_index = 999  # fallback value to push unknowns to bottom
+
+        total_students = random.randint(180, 260)
+        attended = random.randint(140, total_students)
+
+        week_data.append({
+            "module": mod,
+            "week": f"{week} (Week {week_index})",
+            "week_label": f"{week} (Week {week_index})",
+            "week_num": week_index,
+            "attended": attended,
+            "total": total_students,
+            "percentage": round((attended / total_students) * 100, 1)
+        })
+
+    # ✅ Sort chronologically by week number
+    week_data.sort(key=lambda x: x["week_num"])
+
+    return render_template("admin_lecturer_dashboard.html",
+                           lecturer_name=lecturer_name,
+                           lecturer_id=lecturer_id,
+                           course_code=course_code,
+                           week_data=week_data)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1979,6 +2065,339 @@ def export_student_data(student_id):
     output.seek(0)
     filename = f"{username}_performance.xlsx"
     return send_file(output, download_name=filename, as_attachment=True, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+from flask import send_file
+from fpdf import FPDF
+from io import BytesIO
+import sqlite3
+from student_profile_dashboard import course_modules, module_meta
+
+@app.route('/admin/export_student/<student_id>/pdf')
+def export_student_pdf(student_id):
+    conn = sqlite3.connect("courses.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT s.*, c.name AS course_name, c.code AS course_code
+        FROM students s
+        JOIN enrollments e ON s.id = e.student_id
+        JOIN courses c ON c.id = e.course_id
+        WHERE s.id = ?
+    """, (student_id,))
+    student = cursor.fetchone()
+    if not student:
+        return "Student not found", 404
+
+    student = dict(zip([column[0] for column in cursor.description], student))
+    student_name = student["username"]
+    course_code = student["course_code"]
+    course = student["course_name"]
+    attendance = student["attendance"]
+
+    rows = []
+    for mod_code in course_modules.get(course_code, []):
+        meta = module_meta.get(mod_code)
+        if not meta:
+            continue
+
+        module_name = meta["name"]
+        assignments = meta["assignments"]
+        exam_title = meta["exam"]
+
+        for i, title in enumerate(assignments):
+            key = f"a{i+1}"
+            score = student.get(f"{key}_score")
+            penalty = student.get(f"{key}_penalty") or "None"
+            status = student.get(f"{key}_status") or "Not Completed"
+            rows.append([
+                f"{module_name} ({mod_code})",
+                f"Assignment {i+1} - {title}",
+                str(score if score is not None else ""),
+                penalty,
+                status
+            ])
+
+        if exam_title:
+            exam_score = student.get("exam_score")
+            exam_status = student.get("exam_status") or "Not Completed"
+            score = exam_score if exam_status == "Fit to Sit" else ""
+            rows.append([
+                f"{module_name} ({mod_code})",
+                f"Exam - {exam_title}",
+                str(score),
+                "",
+                exam_status
+            ])
+
+        a1 = float(student.get("a1_score") or 0)
+        a2 = float(student.get("a2_score") or 0)
+        exam = float(student.get("exam_score") or 0)
+        final_grade = round((a1 * 0.25 + a2 * 0.25 + exam * 0.5), 2) if exam_title else round((a1 * 0.5 + a2 * 0.5), 2)
+        rows.append([
+            f"{module_name} ({mod_code})",
+            "Final Grade",
+            str(final_grade),
+            "",
+            ""
+        ])
+
+    class PDF(FPDF):
+        def header(self):
+            self.set_font("Arial", size=12)
+            self.cell(0, 10, "Student Report", ln=True, align='C')
+            self.ln(5)
+            self.set_font("Arial", size=11)
+            self.cell(0, 8, f"Name: {student_name}", ln=True)
+            self.cell(0, 8, f"ID: {student_id}", ln=True)
+            self.cell(0, 8, f"Course: {course}", ln=True)
+            self.cell(0, 8, f"Attendance: {attendance}%", ln=True)
+            self.ln(10)
+
+    pdf = PDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    headers = ["Module", "Type", "Score", "Penalty", "Status"]
+    col_widths = [55, 60, 20, 30, 30]
+    line_height = 8
+
+    pdf.set_font("Arial", 'B', 11)
+    for i, header in enumerate(headers):
+        pdf.cell(col_widths[i], line_height + 2, header, border=1, align='C')
+    pdf.ln()
+
+    pdf.set_font("Arial", size=10)
+
+    def calculate_max_lines(texts, widths):
+        max_lines = 1
+        for i, text in enumerate(texts):
+            encoded = str(text).encode('latin-1', errors='replace').decode('latin-1')
+            num_lines = pdf.get_string_width(encoded) / (widths[i] - 2)
+            max_lines = max(max_lines, int(num_lines) + 1)
+        return max_lines
+
+    for row in rows:
+        x_start = pdf.get_x()
+        y_start = pdf.get_y()
+
+        max_lines = calculate_max_lines(row, col_widths)
+        row_height = line_height * max_lines
+
+        for i, item in enumerate(row):
+            x = pdf.get_x()
+            y = pdf.get_y()
+            w = col_widths[i]
+            h = row_height
+            text = str(item).encode('latin-1', errors='replace').decode('latin-1')
+
+            pdf.multi_cell(w, line_height, text, border=1, align='C')
+            pdf.set_xy(x + w, y_start)
+
+        pdf.set_y(y_start + row_height)
+
+    pdf_bytes = pdf.output(dest='S').encode('latin-1', errors='replace')
+    buffer = BytesIO(pdf_bytes)
+    filename = f"{student_name.replace(' ', '_')}_{student_id}_report.pdf"
+    return send_file(buffer, as_attachment=True, download_name=filename, mimetype="application/pdf")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+################# admin lectuer export
+@app.route('/admin/export_lecturer/<lecturer_id>')
+def export_lecturer_excel(lecturer_id):
+    import sqlite3
+    import pandas as pd
+    import io
+    from flask import send_file
+
+    module_meta = {
+        "SE201": ["Sprint Planning", "Daily Standups", "Backlog Grooming", "Scrum Events", "Velocity Tracking", "Agile Metrics", "Burndown Charts", "Product Increments", "Retrospectives", "Agile Estimation", "Kanban vs Scrum", "Agile Wrap-up"],
+        "SE202": ["HTML Basics", "CSS Styling", "Responsive Design", "JavaScript DOM", "Forms and Validation", "Web Hosting", "REST APIs", "Frontend Frameworks", "Authentication", "Web Security", "Debugging Tools", "Deployment"],
+        "SE203": ["Testing Basics", "Unit Tests", "Mocks and Stubs", "Integration Testing", "System Testing", "Acceptance Testing", "Test Automation", "Bug Tracking", "Regression Testing", "Performance Testing", "Security Testing", "Test Reporting"],
+        "SE204": ["Cloud Basics", "IaaS & PaaS", "Deployment Models", "Cloud Storage", "Load Balancing", "Auto-scaling", "Monitoring Tools", "CI/CD Pipelines", "Containers", "Security in Cloud", "Cloud Costing", "Capstone Demo"],
+        "DS101": ["Data Cleaning", "Feature Engineering", "Model Selection", "Supervised Learning", "Unsupervised Learning", "Neural Networks", "Evaluation Metrics", "Model Deployment", "Overfitting & Underfitting", "Hyperparameter Tuning", "Bias-Variance Tradeoff", "Final Review"],
+        "DS102": ["Intro to Big Data", "Hadoop Ecosystem", "Spark Basics", "Data Lakes & Warehouses", "Data Ingestion", "ETL Pipelines", "MapReduce", "Stream Processing", "Data Storage", "Scalability", "Big Data Tools", "Case Study"],
+        "DS203": ["DevOps & MLOps", "Model Deployment", "API Integration", "Continuous Delivery", "Dockerization", "Monitoring Models", "Data Drift", "Model Logging", "Scaling Inference", "Deployment Tools", "Model Governance", "Final Review"],
+        "DS204": ["Data Ethics Intro", "Bias in AI", "Fairness Metrics", "Case Studies", "Consent Mechanisms", "GDPR", "Data Security", "Responsible AI", "Transparency", "Accountability", "Audit Frameworks", "Wrap-Up"]
+    }
+
+    conn = sqlite3.connect("courses.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT DISTINCT lecturer_id, lecturer_name, course_code
+        FROM lecturer_assignments
+        WHERE lecturer_id = ?
+    """, (lecturer_id,))
+    lecturer = cursor.fetchone()
+
+    if not lecturer:
+        return "Lecturer not found", 404
+
+    lecturer_id, lecturer_name, course_code = lecturer
+
+    cursor.execute("""
+        SELECT module_code, module_week
+        FROM lecturer_assignments
+        WHERE lecturer_id = ?
+    """, (lecturer_id,))
+    assignments = cursor.fetchall()
+    conn.close()
+
+    # Prepare attendance data
+    rows = []
+    for module, week in assignments:
+        week_index = None
+        if module in module_meta and week in module_meta[module]:
+            week_index = module_meta[module].index(week) + 1
+        week_full = f"{week} (Week {week_index})" if week_index else week
+
+        total = 250
+        attended = 160 + (hash(module + week) % 90)
+        percent = round(attended / total * 100, 1)
+
+        rows.append({
+            "Module": module,
+            "Week": week_full,
+            "Students Attended": attended,
+            "Total Students": total,
+            "Attendance %": percent
+        })
+
+    df = pd.DataFrame(rows)
+
+    # Excel export
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        # Sheet 1: Details
+        pd.DataFrame([{
+            "Lecturer Name": lecturer_name,
+            "Lecturer ID": lecturer_id,
+            "Course Code": course_code
+        }]).to_excel(writer, sheet_name="Lecturer Info", index=False)
+
+        # Sheet 2: Attendance
+        df.to_excel(writer, sheet_name="Attendance", index=False)
+
+    output.seek(0)
+    filename = f"{lecturer_name.replace(' ', '_')}_{lecturer_id}.xlsx"
+    return send_file(output, as_attachment=True,
+                     download_name=filename,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+
+
+@app.route('/admin/export_lecturer/<lecturer_id>/pdf')
+def export_lecturer_pdf(lecturer_id):
+    import sqlite3
+    from fpdf import FPDF
+    import io
+    from flask import send_file
+
+    module_meta = {
+        "SE201": ["Sprint Planning", "Daily Standups", "Backlog Grooming", "Scrum Events", "Velocity Tracking", "Agile Metrics", "Burndown Charts", "Product Increments", "Retrospectives", "Agile Estimation", "Kanban vs Scrum", "Agile Wrap-up"],
+        "SE202": ["HTML Basics", "CSS Styling", "Responsive Design", "JavaScript DOM", "Forms and Validation", "Web Hosting", "REST APIs", "Frontend Frameworks", "Authentication", "Web Security", "Debugging Tools", "Deployment"],
+        "SE203": ["Testing Basics", "Unit Tests", "Mocks and Stubs", "Integration Testing", "System Testing", "Acceptance Testing", "Test Automation", "Bug Tracking", "Regression Testing", "Performance Testing", "Security Testing", "Test Reporting"],
+        "SE204": ["Cloud Basics", "IaaS & PaaS", "Deployment Models", "Cloud Storage", "Load Balancing", "Auto-scaling", "Monitoring Tools", "CI/CD Pipelines", "Containers", "Security in Cloud", "Cloud Costing", "Capstone Demo"],
+        "DS101": ["Data Cleaning", "Feature Engineering", "Model Selection", "Supervised Learning", "Unsupervised Learning", "Neural Networks", "Evaluation Metrics", "Model Deployment", "Overfitting & Underfitting", "Hyperparameter Tuning", "Bias-Variance Tradeoff", "Final Review"],
+        "DS102": ["Intro to Big Data", "Hadoop Ecosystem", "Spark Basics", "Data Lakes & Warehouses", "Data Ingestion", "ETL Pipelines", "MapReduce", "Stream Processing", "Data Storage", "Scalability", "Big Data Tools", "Case Study"],
+        "DS203": ["DevOps & MLOps", "Model Deployment", "API Integration", "Continuous Delivery", "Dockerization", "Monitoring Models", "Data Drift", "Model Logging", "Scaling Inference", "Deployment Tools", "Model Governance", "Final Review"],
+        "DS204": ["Data Ethics Intro", "Bias in AI", "Fairness Metrics", "Case Studies", "Consent Mechanisms", "GDPR", "Data Security", "Responsible AI", "Transparency", "Accountability", "Audit Frameworks", "Wrap-Up"]
+    }
+
+    conn = sqlite3.connect("courses.db")
+    cursor = conn.cursor()
+
+    # Get lecturer info
+    cursor.execute("""
+        SELECT DISTINCT lecturer_id, lecturer_name, course_code
+        FROM lecturer_assignments
+        WHERE lecturer_id = ?
+    """, (lecturer_id,))
+    lecturer = cursor.fetchone()
+
+    if not lecturer:
+        return "Lecturer not found", 404
+
+    lecturer_id, lecturer_name, course_code = lecturer
+
+    # Get assignments
+    cursor.execute("""
+        SELECT module_code, module_week
+        FROM lecturer_assignments
+        WHERE lecturer_id = ?
+    """, (lecturer_id,))
+    assignments = cursor.fetchall()
+    conn.close()
+
+    # Simulate attendance data
+    rows = []
+    for module, week in assignments:
+        week_index = module_meta.get(module, []).index(week) + 1 if week in module_meta.get(module, []) else '?'
+        week_label = f"{week} (Week {week_index})"
+        total = 250
+        attended = 160 + (hash(module + week) % 90)
+        percent = round(attended / total * 100, 1)
+        rows.append((module, week_label, attended, total, f"{percent}%"))
+
+    # Generate PDF
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    pdf.set_title(f"{lecturer_name} ({lecturer_id}) Attendance Report")
+    pdf.cell(200, 10, f"Lecturer Report", ln=True, align='C')
+    pdf.ln(5)
+    pdf.cell(200, 10, f"Name: {lecturer_name}", ln=True)
+    pdf.cell(200, 10, f"ID: {lecturer_id}", ln=True)
+    pdf.cell(200, 10, f"Course: {course_code}", ln=True)
+    pdf.ln(10)
+
+    # Table Header
+    pdf.set_font("Arial", 'B', size=11)
+    headers = ["Module", "Week", "Attended", "Total", "Attendance %"]
+    col_widths = [35, 70, 25, 25, 35]
+    for i, header in enumerate(headers):
+        pdf.cell(col_widths[i], 10, header, border=1, align='C')
+    pdf.ln()
+
+    # Table Body
+    pdf.set_font("Arial", size=10)
+    for row in rows:
+        for i, item in enumerate(row):
+            pdf.cell(col_widths[i], 10, str(item), border=1, align='C')
+        pdf.ln()
+
+    # Write to actual file-like object
+    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    buffer = io.BytesIO(pdf_bytes)
+
+    filename = f"{lecturer_name.replace(' ', '_')}_{lecturer_id}_report.pdf"
+    return send_file(buffer, as_attachment=True, download_name=filename, mimetype='application/pdf')
 
 
 
