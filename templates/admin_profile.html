@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Profile</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin_navbar.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom right, #d3dae8, #f2f5f9);
+      display: flex;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .profile-container {
+      width: 100%;
+      max-width: 1080px;
+    }
+
+    .profile-header {
+      background: #007BFF;
+      color: white;
+      text-align: center;
+      padding: 40px 20px;
+      border-radius: 20px 20px 0 0;
+    }
+
+    .profile-header img {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: white;
+      padding: 6px;
+      margin-bottom: 15px;
+    }
+
+    .profile-header h1 {
+      margin: 0;
+      font-size: 32px;
+      text-transform: uppercase;
+    }
+
+    .profile-header p {
+      margin-top: 5px;
+      font-size: 16px;
+      color: #e6e6e6;
+    }
+
+    .profile-sections {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      padding: 40px;
+      background: white;
+      border-radius: 0 0 20px 20px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .info-section {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 20px 25px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .info-section h2 {
+      font-size: 17px;
+      color: #007BFF;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 6px;
+    }
+
+    .info-section p {
+      font-size: 15px;
+      color: #333;
+      margin: 6px 0;
+    }
+  </style>
+</head>
+<body>
+  {% include 'navbar_admin_sidebar.html' %}
+
+  <div class="main-content">
+    <div class="profile-container">
+      <div class="profile-header">
+        <img src="{{ url_for('static', filename='images/profile.png') }}" alt="Admin Avatar" />
+        <h1>ADMIN ONE</h1>
+        <p>Admin ID: 154687</p>
+      </div>
+
+      <div class="profile-sections">
+        <div class="info-section">
+          <h2><i class="fas fa-user-shield"></i> Basic Information</h2>
+          <p><strong>Full Name:</strong> Admin One</p>
+          <p><strong>Email:</strong> admin@universityportal.com</p>
+          <p><strong>Gender:</strong> Not Specified</p>
+          <p><strong>Role:</strong> System Administrator</p>
+        </div>
+
+        <div class="info-section">
+          <h2><i class="fas fa-building"></i> Work Details</h2>
+          <p><strong>Department:</strong> Systems & Infrastructure</p>
+          <p><strong>Years Active:</strong> 10 Years</p>
+          <p><strong>Office:</strong> MB105, Admin HQ</p>
+        </div>
+
+        <div class="info-section">
+          <h2><i class="fas fa-database"></i> System Summary</h2>
+          <p><strong>Total Courses:</strong> 12</p>
+          <p><strong>Total Lecturers:</strong> 25</p>
+          <p><strong>Registered Students:</strong> 340</p>
+        </div>
+
+        <div class="info-section">
+          <h2><i class="fas fa-phone-alt"></i> Contact Info</h2>
+          <p><strong>Phone:</strong> +44 1234 567890</p>
+          <p><strong>Address:</strong> Aston Street, Birmingham, UK</p>
+          <p><strong>Emergency Contact:</strong> +44 9876 543210</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

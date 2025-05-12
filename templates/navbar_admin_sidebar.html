@@ -1,0 +1,15 @@
+<!-- navbar_admin_sidebar.html -->
+<div class="sidebar">
+    <h2 class="logo">Admin Portal</h2>
+    <nav>
+      <a href="{{ url_for('home_admin') }}">Home</a>
+      <a href="{{ url_for('admin_profile') }}">Profile</a>
+      <a href="{{ url_for('course_management') }}">Course Management</a>
+      <a href="/admin/courses/modules">Courses</a>
+      <a href="{{ url_for('student_list') }}">Students</a>
+      <a href="{{ url_for('admin_lecturers') }}">Lecturers</a>
+      <a href="{{ url_for('admin_export') }}">Export</a>
+      <a href="{{ url_for('logout') }}">Logout</a>
+    </nav>
+  </div>
+  

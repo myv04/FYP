@@ -80,7 +80,7 @@ dash_admin = dash.Dash(
 )
 
 dash_admin.layout = html.Div(style={'padding': '20px', 'maxWidth': '1200px', 'margin': '0 auto'}, children=[
-    html.H1("Admin Dashboard: Data Science & Software Engineering", style={'textAlign': 'center'}),
+    
 
     html.Div([
         html.H2("📊 Dashboard Statistics"),

@@ -1,4 +1,3 @@
-<!-- edit_software.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -32,6 +31,29 @@
     .page-link { display: inline-block; margin: 0 5px; padding: 5px 10px; border: 1px solid #3498db; border-radius: 5px; color: #3498db; cursor: pointer; text-decoration: none; }
     .page-link:hover { background-color: #3498db; color: white; }
     .page-link.active { background-color: #3498db; color: white; font-weight: bold; }
+    #addModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background-color: rgba(0, 0, 0, 0.6);
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    #addModal .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+    }
+    #userList label {
+      display: block;
+      margin: 6px 0;
+    }
   </style>
 </head>
 <body>
@@ -39,40 +61,26 @@
 {% include 'navbar_admin.html' %}
 
 <div class="main-content">
-
   <div class="form-container">
     <a href="{{ url_for('course_management') }}" class="back-link">⬅ Back to Courses</a>
-
-    {% if success %}
-    <div class="success-message">
-      ✅ {{ success }}
-    </div>
-    {% endif %}
-
+    {% if success %}<div class="success-message">✅ {{ success }}</div>{% endif %}
     <h1>✏ Edit Software Engineering Course</h1>
-
     <form action="{{ url_for('edit_course', course_id=course['id']) }}" method="POST">
       <label for="name">Course Name:</label>
       <input type="text" id="name" name="name" value="{{ course['name'] }}" required>
-
       <label for="code">Course Code:</label>
       <input type="text" id="code" name="code" value="{{ course['code'] }}" required>
-
       <label for="students">Students Enrolled:</label>
       <input type="number" id="students" name="students" value="{{ course['students'] }}" required>
-
       <label for="lecturers">Lecturers Assigned:</label>
       <input type="number" id="lecturers" name="lecturers" value="{{ course['lecturers'] }}" required>
-
       <label for="status">Status:</label>
       <select id="status" name="status" required>
-      <option value="Active" {% if course['status'] == 'Active' %}selected{% endif %}>Active</option>
-      <option value="Inactive" {% if course['status'] == 'Inactive' %}selected{% endif %}>Inactive</option>
+        <option value="Active" {% if course['status'] == 'Active' %}selected{% endif %}>Active</option>
+        <option value="Inactive" {% if course['status'] == 'Inactive' %}selected{% endif %}>Inactive</option>
       </select>
-
-    <label for="year">Year/Intake:</label>
-    <input type="number" id="year" name="year" value="{{ course['year'] }}" required>
-
+      <label for="year">Year/Intake:</label>
+      <input type="number" id="year" name="year" value="{{ course['year'] }}" required>
       <div class="btn-container">
         <button type="submit" class="save-btn">💾 Save Changes</button>
         <a href="{{ url_for('course_management') }}" class="cancel-btn">❌ Cancel</a>
@@ -82,7 +90,6 @@
 
   <div class="table-container">
     <h2>👥 Manage People Enrolled</h2>
-
     <div class="filter-inputs">
       <input type="text" id="nameFilter" placeholder="Filter by Name" onkeyup="applyFilters()">
       <input type="text" id="roleFilter" placeholder="Filter by Role" onkeyup="applyFilters()">
@@ -94,123 +101,146 @@
         <option value="Removed">Removed</option>
       </select>
     </div>
-
+    <div class="btn-container" style="margin-bottom: 15px; text-align: right;">
+      <button class="save-btn" onclick="showAddModal('student')">➕ Add Student</button>
+      <button class="save-btn" onclick="showAddModal('lecturer')">➕ Add Lecturer</button>
+    </div>
     <table id="peopleTable">
       <thead>
-        <tr>
-          <th>UNI ID</th>
-          <th>Name</th>
-          <th>Role</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
+        <tr><th>UNI ID</th><th>Name</th><th>Role</th><th>Status</th><th>Actions</th></tr>
       </thead>
       <tbody></tbody>
     </table>
-
     <div id="recordCount"></div>
     <div id="pagination"></div>
-
   </div>
+</div>
 
+<!-- Modal -->
+<div id="addModal">
+  <div class="modal-content">
+    <h3 id="modalTitle">Add Users</h3>
+    <div id="userList">Loading...</div>
+    <div style="text-align:right; margin-top:15px;">
+      <button id="confirmAddBtn" class="save-btn">✅ Confirm</button>
+      <button onclick="closeModal()" class="cancel-btn">❌ Cancel</button>
+    </div>
+  </div>
 </div>
 
 <script>
-  const originalData = [
-    {% for user in users %}
-    {
-      uni_id: "{{ user['uni_id'] }}",
-      username: "{{ user['username'] }}",
-      role: "{{ user['role'] }}",
-      enrollment_status: "{{ user['enrollment_status'] }}",
-      join_date: "{{ user['join_date'] }}",
-      id: "{{ user['id'] }}"
-    },
-    {% endfor %}
-  ];
+const originalData = [
+  {% for user in users %}
+  { uni_id: "{{ user['uni_id'] }}", username: "{{ user['username'] }}", role: "{{ user['role'] }}", enrollment_status: "{{ user['enrollment_status'] }}", join_date: "{{ user['join_date'] }}", id: "{{ user['id'] }}" },
+  {% endfor %}
+];
+let filteredData = [...originalData], currentPage = 1, rowsPerPage = 50;
 
-  let filteredData = [...originalData];
-  let currentPage = 1;
-  const rowsPerPage = 50;
+function applyFilters() {
+  const nameFilter = document.getElementById("nameFilter").value.toLowerCase();
+  const roleFilter = document.getElementById("roleFilter").value.toLowerCase();
+  const statusFilter = document.getElementById("statusFilter").value;
+  filteredData = originalData.filter(user =>
+    user.username.toLowerCase().includes(nameFilter) &&
+    user.role.toLowerCase().includes(roleFilter) &&
+    (!statusFilter || user.enrollment_status === statusFilter));
+  currentPage = 1;
+  renderTable();
+}
 
-  function applyFilters() {
-    const nameFilter = document.getElementById("nameFilter").value.toLowerCase();
-    const roleFilter = document.getElementById("roleFilter").value.toLowerCase();
-    const statusFilter = document.getElementById("statusFilter").value;
-
-    filteredData = originalData.filter(user => {
-      const matchesName = user.username.toLowerCase().includes(nameFilter);
-      const matchesRole = user.role.toLowerCase().includes(roleFilter);
-      const matchesStatus = !statusFilter || user.enrollment_status === statusFilter;
-
-      return matchesName && matchesRole && matchesStatus;
-    });
-
-    currentPage = 1;
-    renderTable();
-  }
-
-  function renderTable() {
-    const tbody = document.querySelector("#peopleTable tbody");
-    tbody.innerHTML = "";
-
-    const start = (currentPage - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-    const pageData = filteredData.slice(start, end);
-
-    pageData.forEach(user => {
-      const row = tbody.insertRow();
-
-      row.insertCell().textContent = user.uni_id;
-      row.insertCell().textContent = user.username;
-      row.insertCell().textContent = user.role;
-      row.insertCell().textContent = user.enrollment_status;
-
-      const actionsCell = row.insertCell();
-      if (user.enrollment_status === "Removed") {
-        actionsCell.innerHTML = `
-          <form action="/course/{{ course['id'] }}/restore_user/${user.id}" method="POST">
-            <input type="hidden" name="original_status" value="${user.role === 'Student' ? 'Enrolled' : 'Active'}">
-            <button type="submit" class="restore-btn">↩ Restore</button>
-          </form>
-        `;
-      } else {
-        actionsCell.innerHTML = `
-          <form action="/course/{{ course['id'] }}/delete_user/${user.id}" method="POST" onsubmit="return confirm('Are you sure you want to archive this user?')">
-            <button type="submit" class="archive-btn">🗑 Archive</button>
-          </form>
-        `;
-      }
-    });
-
-    document.getElementById("recordCount").textContent =
-      filteredData.length > 0
-        ? `Showing ${Math.min(end, filteredData.length)} of ${filteredData.length} records`
-        : "No matching records found.";
-
-    renderPagination();
-  }
-
-  function renderPagination() {
-    const pagination = document.getElementById("pagination");
-    pagination.innerHTML = "";
-    const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-    if (totalPages <= 1) return;
-
-    for (let i = 1; i <= totalPages; i++) {
-      const pageLink = document.createElement("span");
-      pageLink.className = "page-link" + (i === currentPage ? " active" : "");
-      pageLink.textContent = i;
-      pageLink.onclick = () => {
-        currentPage = i;
-        renderTable();
-      };
-      pagination.appendChild(pageLink);
+function renderTable() {
+  const tbody = document.querySelector("#peopleTable tbody");
+  tbody.innerHTML = "";
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+  const pageData = filteredData.slice(start, end);
+  pageData.forEach(user => {
+    const row = tbody.insertRow();
+    row.insertCell().textContent = user.uni_id;
+    row.insertCell().textContent = user.username;
+    row.insertCell().textContent = user.role;
+    row.insertCell().textContent = user.enrollment_status;
+    const actionsCell = row.insertCell();
+    if (user.enrollment_status === "Removed") {
+      actionsCell.innerHTML = `<form action="/course/{{ course['id'] }}/restore_user/${user.id}" method="POST"><input type="hidden" name="original_status" value="${user.role === 'Student' ? 'Enrolled' : 'Active'}"><button type="submit" class="restore-btn">↩ Restore</button></form>`;
+    } else {
+      actionsCell.innerHTML = `<form action="/course/{{ course['id'] }}/delete_user/${user.id}" method="POST" onsubmit="return confirm('Are you sure you want to archive this user?')"><button type="submit" class="archive-btn">🗑 Archive</button></form>`;
     }
+  });
+  document.getElementById("recordCount").textContent = filteredData.length
+    ? `Showing ${Math.min(end, filteredData.length)} of ${filteredData.length} records`
+    : "No matching records found.";
+  renderPagination();
+}
+
+function renderPagination() {
+  const pagination = document.getElementById("pagination");
+  pagination.innerHTML = "";
+  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+  if (totalPages <= 1) return;
+  for (let i = 1; i <= totalPages; i++) {
+    const pageLink = document.createElement("span");
+    pageLink.className = "page-link" + (i === currentPage ? " active" : "");
+    pageLink.textContent = i;
+    pageLink.onclick = () => { currentPage = i; renderTable(); };
+    pagination.appendChild(pageLink);
+  }
+}
+
+applyFilters();
+
+function showAddModal(role) {
+  const courseId = {{ course['id'] }};
+  const modal = document.getElementById("addModal");
+  const userList = document.getElementById("userList");
+
+  // ✅ Update the modal title dynamically
+  document.getElementById("modalTitle").textContent =
+    `Add ${role.toLowerCase() === 'student' ? 'Student(s)' : 'Lecturer(s)'}`;
+
+  userList.innerHTML = "<p>Loading...</p>";
+  modal.style.display = "flex";
+
+  fetch(`/api/unassigned_users?course_id=${courseId}&role=${role}`)
+    .then(res => res.json())
+    .then(users => {
+      userList.innerHTML = "";
+      users.forEach(user => {
+        const label = document.createElement("label");
+        label.innerHTML = `<input type="checkbox" value="${user.id}"> ${user.username} (${user.uni_id})`;
+        userList.appendChild(label);
+      });
+      document.getElementById("confirmAddBtn").onclick = () => submitAddUsers(role, courseId);
+    });
+}
+
+function closeModal() {
+  document.getElementById("addModal").style.display = "none";
+}
+
+function submitAddUsers(role, courseId) {
+  const selected = Array.from(document.querySelectorAll("#userList input:checked")).map(input => input.value);
+  if (!selected.length) {
+    alert("Select at least one user.");
+    return;
   }
 
-  applyFilters();
-</script>
+  const endpoint = role === "student" ? "/admin/add_student_to_course" : "/admin/add_lecturer_to_course";
+  const bodyKey = role === "student" ? "student_id" : "lecturer_id";
 
+  const promises = selected.map(userId => {
+    return fetch(endpoint, {
+      method: "POST",
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [bodyKey]: userId, course_id: courseId })
+    }).then(res => res.json());
+  });
+
+  Promise.all(promises).then(results => {
+    alert("Users added successfully.");
+    location.reload();
+  });
+}
+</script>
 </body>
 </html>

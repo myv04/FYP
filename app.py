@@ -174,13 +174,14 @@ def student_list():
     import sqlite3
     conn = sqlite3.connect("courses.db")
     query = """
-        SELECT s.id, s.username, c.name AS course_name, c.code AS course_code
-        FROM students s
-        JOIN enrollments e ON s.id = e.student_id
-        JOIN courses c ON e.course_id = c.id
-        WHERE c.id IN (3, 4)
-        LIMIT 950
-    """
+    SELECT s.id, s.username, c.name AS course_name, c.code AS course_code
+    FROM students s
+    JOIN enrollments e ON s.id = e.student_id
+    JOIN courses c ON e.course_id = c.id
+    WHERE c.id IN (3, 4) AND s.role = 'Student'
+    LIMIT 950
+"""
+
     df = pd.read_sql_query(query, conn)
     conn.close()
     return render_template("students.html", students=df.to_dict("records"))
@@ -878,6 +879,13 @@ def generate_lecturer_dashboard_report(file_type="xlsx"):
         ["Software Engineering Avg Score (%)", round(se_avg, 2)],
         ["Data Science Avg Score (%)", round(ds_avg, 2)]
     ]
+    assignments = [
+    ["Assignment", "Completed", "With Penalty", "Not Completed", "Absent"],
+    ["SE - Assignment 1", 42, 8, 5, 3],
+    ["SE - Assignment 2", 40, 10, 6, 2],
+    ["DS - Assignment 1", 38, 9, 4, 6],
+    ["DS - Assignment 2", 41, 7, 3, 6]
+]
 
    
 
@@ -952,6 +960,10 @@ def download_csv_lecturer_dashboard():
 # ✅ Function to generate Software Engineering Dashboard Export
 def generate_software_engineering_report(file_type="excel"):
     from course_data import software_engineering_students
+    import pandas as pd
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from io import BytesIO
 
     def calculate_final_grade(a1, a2, exam, p1, p2):
         try:
@@ -984,8 +996,21 @@ def generate_software_engineering_report(file_type="excel"):
         row.get("a2_penalty")
     ), axis=1)
 
-    df = df[[
-        "ID", "Student", "Final Grade", "Attendance", "Exam Status", "Exam Score",
+    df["Student"] = df["name"]
+    df["ID"] = df["id"]
+    df["Attendance (%)"] = df["attendance"]
+    df["Exam Status"] = df["exam_status"]
+    df["Exam Score"] = df["exam_score"]
+    df["Assignment 1 (Bugs and Fixes)"] = df["a1_score"]
+    df["Assignment 1 Status"] = df["a1_status"]
+    df["Assignment 1 Penalty"] = df["a1_penalty"]
+    df["Assignment 2 (Software Architecture)"] = df["a2_score"]
+    df["Assignment 2 Status"] = df["a2_status"]
+    df["Assignment 2 Penalty"] = df["a2_penalty"]
+    df["Status"] = df["status"]
+
+    df = df[[ 
+        "ID", "Student", "Final Grade", "Attendance (%)", "Exam Status", "Exam Score",
         "Assignment 1 (Bugs and Fixes)", "Assignment 1 Status", "Assignment 1 Penalty",
         "Assignment 2 (Software Architecture)", "Assignment 2 Status", "Assignment 2 Penalty",
         "Status"
@@ -1024,6 +1049,7 @@ def generate_software_engineering_report(file_type="excel"):
 
     return None
 
+
 @app.route('/download_excel_software_engineering_dashboard')
 @login_required
 def download_excel_software_engineering_dashboard():
@@ -1050,6 +1076,10 @@ def download_csv_software_engineering_dashboard():
 # ✅ Function to generate Data Science Dashboard Export
 def generate_data_science_report(file_type="excel"):
     from course_data import data_science_students
+    import pandas as pd
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from io import BytesIO
 
     def calculate_final_grade(a1, a2, exam, p1, p2):
         try:
@@ -1082,8 +1112,21 @@ def generate_data_science_report(file_type="excel"):
         row.get("a2_penalty")
     ), axis=1)
 
-    df = df[[
-        "ID", "Student", "Final Grade", "Attendance", "Exam Status", "Exam Score",
+    df["Student"] = df["name"]
+    df["ID"] = df["id"]
+    df["Attendance (%)"] = df["attendance"]
+    df["Exam Status"] = df["exam_status"]
+    df["Exam Score"] = df["exam_score"]
+    df["Assignment 1 (Data Analysis)"] = df["a1_score"]
+    df["Assignment 1 Status"] = df["a1_status"]
+    df["Assignment 1 Penalty"] = df["a1_penalty"]
+    df["Assignment 2 (Machine Learning)"] = df["a2_score"]
+    df["Assignment 2 Status"] = df["a2_status"]
+    df["Assignment 2 Penalty"] = df["a2_penalty"]
+    df["Status"] = df["status"]
+
+    df = df[[ 
+        "ID", "Student", "Final Grade", "Attendance (%)", "Exam Status", "Exam Score",
         "Assignment 1 (Data Analysis)", "Assignment 1 Status", "Assignment 1 Penalty",
         "Assignment 2 (Machine Learning)", "Assignment 2 Status", "Assignment 2 Penalty",
         "Status"
@@ -1121,6 +1164,7 @@ def generate_data_science_report(file_type="excel"):
         return df.to_csv(index=False).encode("utf-8")
 
     return None
+
 
 
 # ✅ Flask Routes to Export Data Science Report
@@ -2398,6 +2442,370 @@ def export_lecturer_pdf(lecturer_id):
 
     filename = f"{lecturer_name.replace(' ', '_')}_{lecturer_id}_report.pdf"
     return send_file(buffer, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+
+################################### adding students and lectuers to admin side
+@app.route("/api/unassigned_users")
+def get_unassigned_users():
+    course_id = request.args.get("course_id", type=int)
+    role = request.args.get("role", type=str)
+
+    conn = sqlite3.connect("courses.db")
+    cur = conn.cursor()
+
+    # Validate course
+    cur.execute("SELECT code, name FROM courses WHERE id = ?", (course_id,))
+    row = cur.fetchone()
+    if not row:
+        return jsonify([])
+
+    course_code, course_name = row
+    combined = (course_code + course_name).upper()
+
+    prefix = ""
+    if "SOFTWARE" in combined or "SE" in combined:
+        prefix = "SE"
+    elif "DATA" in combined or "DS" in combined:
+        prefix = "DS"
+
+    if role.lower() == "student":
+        query = """
+            SELECT id, username, uni_id FROM students
+            WHERE role = 'Student'
+              AND enrollment_status != 'Removed'
+              AND uni_id IS NOT NULL
+              AND id NOT IN (SELECT student_id FROM enrollments)
+              AND uni_id LIKE ?
+        """
+        params = [f"{prefix}%"]
+
+    elif role.lower() == "lecturer":
+        query = """
+            SELECT id, username, uni_id FROM students
+            WHERE role = 'Lecturer'
+              AND id NOT IN (SELECT lecturer_id FROM lecturer_assignments)
+              AND uni_id IS NOT NULL
+        """
+        params = []
+
+    else:
+        return jsonify([])
+
+    cur.execute(query, params)
+    users = [{"id": row[0], "username": row[1], "uni_id": row[2]} for row in cur.fetchall()]
+    conn.close()
+    return jsonify(users)
+
+
+
+
+
+@app.route('/admin/add_student_to_course', methods=['POST'])
+@login_required
+def add_student_to_course():
+    data = request.get_json()
+    student_id = data.get('student_id')
+    course_id = data.get('course_id')
+
+    if not student_id or not course_id:
+        return jsonify({'success': False, 'message': 'Missing student_id or course_id'}), 400
+
+    conn = sqlite3.connect('courses.db')
+    cursor = conn.cursor()
+
+    # Check if already enrolled
+    cursor.execute("SELECT 1 FROM enrollments WHERE student_id = ? AND course_id = ?", (student_id, course_id))
+    if cursor.fetchone():
+        conn.close()
+        return jsonify({'success': False, 'message': 'Student already enrolled'}), 400
+
+    # Add to enrollments and increment count
+    cursor.execute("INSERT INTO enrollments (student_id, course_id) VALUES (?, ?)", (student_id, course_id))
+    cursor.execute("UPDATE courses SET students = students + 1 WHERE id = ?", (course_id,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'success': True, 'message': 'Student added'})
+
+
+@app.route('/admin/add_lecturer_to_course', methods=['POST'])
+@login_required
+def add_lecturer_to_course():
+    data = request.get_json()
+    lecturer_id = data.get('lecturer_id')
+    course_id = data.get('course_id')
+
+    if not lecturer_id or not course_id:
+        return jsonify({'success': False, 'message': 'Missing lecturer_id or course_id'}), 400
+
+    conn = sqlite3.connect('courses.db')
+    cursor = conn.cursor()
+
+    # Get course code to assign
+    cursor.execute("SELECT code FROM courses WHERE id = ?", (course_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'success': False, 'message': 'Invalid course'}), 404
+
+    course_code = row[0]
+
+    # Check if already assigned in lecturer_assignments
+    cursor.execute("SELECT 1 FROM lecturer_assignments WHERE lecturer_id = ? AND course_code = ?", (lecturer_id, course_code))
+    if cursor.fetchone():
+        conn.close()
+        return jsonify({'success': False, 'message': 'Lecturer already assigned to this course'}), 400
+
+    # Get lecturer name
+    cursor.execute("SELECT username FROM students WHERE id = ?", (lecturer_id,))
+    name_row = cursor.fetchone()
+    lecturer_name = name_row[0] if name_row else "Unknown"
+
+    # ✅ INSERT into lecturer_assignments
+    cursor.execute("""
+        INSERT INTO lecturer_assignments (lecturer_id, lecturer_name, course_code, module_code, module_week)
+        VALUES (?, ?, ?, '', '')
+    """, (lecturer_id, lecturer_name, course_code))
+
+    # ✅ INSERT into enrollments so they show up on course pages
+    cursor.execute("INSERT INTO enrollments (student_id, course_id) VALUES (?, ?)", (lecturer_id, course_id))
+
+    # ✅ Update lecturer count
+    cursor.execute("UPDATE courses SET lecturers = lecturers + 1 WHERE id = ?", (course_id,))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({'success': True, 'message': 'Lecturer added successfully'})
+
+
+
+########################################################################################################################
+###admin export
+from flask import send_file
+import pandas as pd
+from dashboard_admin import fetch_course_data
+from data_science_dashboard import raw_data as ds_raw
+from software_engineering_dashboard import raw_data as se_raw
+from dashboard_big_data import big_data_students
+from mlops_dashboard import raw_data as mlops_raw
+from data_ethics_dashboard import raw_data as ethics_raw
+from software_testing_dashboard import raw_data as testing_raw
+from cloud_engineering_dashboard import raw_data as cloud_raw
+from dashboard_web_systems import web_systems_students
+from flask_login import login_required
+from io import BytesIO
+from openpyxl import Workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
+
+# -------------------------
+# Live DataFrame Fetchers
+# -------------------------
+
+def get_admin_overview_df():
+    return pd.DataFrame(fetch_course_data())
+
+def get_data_science_df():
+    return pd.DataFrame(ds_raw)
+
+def get_software_engineering_df():
+    return pd.DataFrame(se_raw)
+
+def get_big_data_df():
+    return pd.DataFrame(big_data_students)
+
+def get_mlops_df():
+    return pd.DataFrame(mlops_raw)
+
+def get_data_ethics_df():
+    return pd.DataFrame(ethics_raw)
+
+def get_software_testing_df():
+    return pd.DataFrame(testing_raw)
+
+def get_cloud_engineering_df():
+    return pd.DataFrame(cloud_raw)
+
+def get_web_systems_df():
+    return pd.DataFrame(web_systems_students)
+
+# -------------------------
+# Enhanced Export Logic
+# -------------------------
+
+def export_admin_dashboard(file_type, dashboard_name):
+    df_fetchers = {
+        "overview": get_admin_overview_df,
+        "machine_learning": get_data_science_df,
+        "agile_development": get_software_engineering_df,
+        "big_data": get_big_data_df,
+        "mlops": get_mlops_df,
+        "data_ethics": get_data_ethics_df,
+        "software_testing": get_software_testing_df,
+        "cloud_computing": get_cloud_engineering_df,
+        "web_systems": get_web_systems_df
+    }
+
+    if dashboard_name not in df_fetchers:
+        return "Dashboard not found", 404
+
+    df = df_fetchers[dashboard_name]()
+
+    if dashboard_name == "overview" and file_type == "xlsx":
+        # Enhanced Overview Export with extra sheets
+        df_main = df.copy()
+
+        df_attendance = df_main[["name", "year", "attendance"]].copy()
+        df_attendance.rename(columns={
+            "name": "Module",
+            "attendance": "Attendance (%)"
+        }, inplace=True)
+
+        df_grades = df_main[["name", "year", "average_grade"]].copy()
+        df_grades.rename(columns={
+            "name": "Module",
+            "average_grade": "Grade (%)"
+        }, inplace=True)
+
+        wb = Workbook()
+        ws_main = wb.active
+        ws_main.title = "Course Overview"
+        for r in dataframe_to_rows(df_main, index=False, header=True):
+            ws_main.append(r)
+
+        ws_att = wb.create_sheet("Avg Attendance")
+        for r in dataframe_to_rows(df_attendance, index=False, header=True):
+            ws_att.append(r)
+
+        ws_grades = wb.create_sheet("Avg Grades")
+        for r in dataframe_to_rows(df_grades, index=False, header=True):
+            ws_grades.append(r)
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        return send_file(output, as_attachment=True,
+                         download_name="admin_overview.xlsx",
+                         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+    # Standard CSV / Excel
+    filename = f"admin_{dashboard_name}.{file_type}"
+    if file_type == "xlsx":
+        df.to_excel(filename, index=False)
+    else:
+        df.to_csv(filename, index=False)
+
+    return send_file(filename, as_attachment=True)
+
+# -------------------------
+# Flask Routes for Each
+# -------------------------
+
+@app.route('/download_excel_admin_overview')
+@login_required
+def download_excel_admin_overview():
+    return export_admin_dashboard("xlsx", "overview")
+
+@app.route('/download_csv_admin_overview')
+@login_required
+def download_csv_admin_overview():
+    return export_admin_dashboard("csv", "overview")
+
+@app.route('/download_excel_machine_learning')
+@login_required
+def download_excel_machine_learning():
+    return export_admin_dashboard("xlsx", "machine_learning")
+
+@app.route('/download_csv_machine_learning')
+@login_required
+def download_csv_machine_learning():
+    return export_admin_dashboard("csv", "machine_learning")
+
+@app.route('/download_excel_agile_development')
+@login_required
+def download_excel_agile_development():
+    return export_admin_dashboard("xlsx", "agile_development")
+
+@app.route('/download_csv_agile_development')
+@login_required
+def download_csv_agile_development():
+    return export_admin_dashboard("csv", "agile_development")
+
+@app.route('/download_excel_big_data')
+@login_required
+def download_excel_big_data():
+    return export_admin_dashboard("xlsx", "big_data")
+
+@app.route('/download_csv_big_data')
+@login_required
+def download_csv_big_data():
+    return export_admin_dashboard("csv", "big_data")
+
+@app.route('/download_excel_mlops')
+@login_required
+def download_excel_mlops():
+    return export_admin_dashboard("xlsx", "mlops")
+
+@app.route('/download_csv_mlops')
+@login_required
+def download_csv_mlops():
+    return export_admin_dashboard("csv", "mlops")
+
+@app.route('/download_excel_data_ethics')
+@login_required
+def download_excel_data_ethics():
+    return export_admin_dashboard("xlsx", "data_ethics")
+
+@app.route('/download_csv_data_ethics')
+@login_required
+def download_csv_data_ethics():
+    return export_admin_dashboard("csv", "data_ethics")
+
+@app.route('/download_excel_software_testing')
+@login_required
+def download_excel_software_testing():
+    return export_admin_dashboard("xlsx", "software_testing")
+
+@app.route('/download_csv_software_testing')
+@login_required
+def download_csv_software_testing():
+    return export_admin_dashboard("csv", "software_testing")
+
+@app.route('/download_excel_cloud_computing')
+@login_required
+def download_excel_cloud_computing():
+    return export_admin_dashboard("xlsx", "cloud_computing")
+
+@app.route('/download_csv_cloud_computing')
+@login_required
+def download_csv_cloud_computing():
+    return export_admin_dashboard("csv", "cloud_computing")
+
+@app.route('/download_excel_web_systems')
+@login_required
+def download_excel_web_systems():
+    return export_admin_dashboard("xlsx", "web_systems")
+
+@app.route('/download_csv_web_systems')
+@login_required
+def download_csv_web_systems():
+    return export_admin_dashboard("csv", "web_systems")
+
+
+@app.route('/admin/export')
+@login_required
+def admin_export():
+    return render_template('admin_export.html')
+
+@app.route('/admin/profile')
+@login_required
+def admin_profile():
+    return render_template('admin_profile.html', user=current_user)
+
+
+###########################################################################################################
+
+
 
 
 

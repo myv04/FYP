@@ -1,48 +1,51 @@
+{% extends "navbar_admin.html" %}
+{% block content %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lecturer Export Reports</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='lecturer_navbar.css') }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Exports</title>
+
   <style>
     :root {
-      --bg: #ffffff;
-      --text: #222222;
+      --bg-color: #ffffff;
+      --text-color: #222;
       --card-bg: #f1f1f1;
-      --btn-bg: #007bff;
-      --btn-hover: #0056b3;
+      --card-text: #000;
+      --button-bg: #007bff;
+      --button-hover: #0056b3;
     }
 
     .dark-mode {
-      --bg: #0f2027;
-      --text: #f1f1f1;
+      --bg-color: #0f2027;
+      --text-color: #f1f1f1;
       --card-bg: rgba(255, 255, 255, 0.05);
-      --btn-bg: #00aaff;
-      --btn-hover: #007799;
+      --card-text: #fff;
+      --button-bg: linear-gradient(135deg, #00d2ff, #3a7bd5);
+      --button-hover: linear-gradient(135deg, #29ffc6, #20e3b2);
     }
 
     body {
-      margin: 0;
+      background: var(--bg-color);
+      color: var(--text-color);
       font-family: 'Segoe UI', sans-serif;
-      background: var(--bg);
-      color: var(--text);
       transition: background 0.3s, color 0.3s;
     }
 
-    .main-content {
-      margin-left: 250px;
+    .export-container {
       padding: 60px 40px;
+      width: 100%;
     }
 
-    h1 {
-      font-size: 36px;
+    .export-container h1 {
+      font-size: 42px;
       font-weight: bold;
       text-align: center;
       margin-bottom: 10px;
     }
 
-    p {
+    .export-container p {
       text-align: center;
       font-size: 18px;
       margin-bottom: 40px;
@@ -58,10 +61,15 @@
 
     .export-card {
       background: var(--card-bg);
+      color: var(--card-text);
       border-radius: 18px;
       padding: 25px 20px;
-      box-shadow: 0 12px 28px rgba(0,0,0,0.1);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.2);
       transition: all 0.3s ease-in-out;
+    }
+
+    .export-card:hover {
+      transform: scale(1.02);
     }
 
     .export-card h3 {
@@ -84,15 +92,15 @@
       border-radius: 10px;
       font-size: 15px;
       font-weight: bold;
-      background: var(--btn-bg);
-      color: #fff;
+      background: var(--button-bg);
+      color: white;
       cursor: pointer;
       transition: all 0.2s ease-in-out;
       text-align: center;
     }
 
     .export-btn:hover {
-      background: var(--btn-hover);
+      background: var(--button-hover);
     }
 
     .theme-toggle {
@@ -102,11 +110,11 @@
       z-index: 1000;
       font-weight: bold;
       background: none;
-      border: 2px solid var(--text);
+      border: 2px solid var(--text-color);
       padding: 8px 14px;
       border-radius: 6px;
       cursor: pointer;
-      color: var(--text);
+      color: var(--text-color);
     }
 
     a {
@@ -115,22 +123,24 @@
   </style>
 </head>
 <body>
-  {% include 'navbar_lecturer.html' %}
-
   <button class="theme-toggle" onclick="toggleTheme()">Toggle Theme</button>
 
-  <div class="main-content">
-    <h1>Lecturer Dashboard Exports</h1>
+  <div class="export-container">
+    <h1>Admin Dashboard Exports</h1>
     <p>Download Excel and CSV reports from each module dashboard</p>
 
     <div class="export-grid">
+
       {% for title, name in [
-        ('Your Overview Dashboard', 'lecturer_dashboard'),
-        ('Software Engineering Data', 'software_engineering_dashboard'),
-        ('Data Science Data', 'data_science_dashboard'),
-        ('Students Overview', 'students_overview_dashboard'),
-        ('Student Attendance Insights', 'student_attendance_insights_renamed'),
-        ('Course Registers', 'course_registers')
+        ('Your Overview', 'admin_overview'),
+        ('Machine Learning', 'machine_learning'),
+        ('Agile Development', 'agile_development'),
+        ('Big Data', 'big_data'),
+        ('MLOps', 'mlops'),
+        ('Data Ethics', 'data_ethics'),
+        ('Software Testing', 'software_testing'),
+        ('Cloud Computing', 'cloud_computing'),
+        ('Web Systems', 'web_systems')
       ] %}
       <div class="export-card">
         <h3>{{ title }}</h3>
@@ -144,6 +154,7 @@
         </div>
       </div>
       {% endfor %}
+
     </div>
   </div>
 
@@ -161,3 +172,4 @@
   </script>
 </body>
 </html>
+{% endblock %}

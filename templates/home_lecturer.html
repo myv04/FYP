@@ -1,61 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lecturer Portal</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='lecturer_navbar.css') }}">
-    <style>
-        /* Ensures the iframe stretches across the whole page */
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lecturer Portal</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='lecturer_navbar.css') }}">
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+    }
 
-        /* Main content container */
-        .main-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            flex: 1;
-            padding: 20px;
-        }
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      padding: 20px;
+    }
 
-        /* Dashboard container styles */
-        .dashboard-container {
-            width: 100%;
-            height: 100%;
-        }
+    .dashboard-container {
+      width: 100%;
+      height: 100%;
+    }
 
-        /* Ensure the iframe takes up the full width and height of its container */
-        .dashboard-frame {
-            width: 100%;
-            height: 100vh; /* Full viewport height */
-            border: none;
-        }
+    .dashboard-frame {
+      width: 100%;
+      height: 100vh;
+      border: none;
+    }
 
-        /* Optional styling for the title */
-        .dashboard-title {
-            font-size: 2rem;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-    </style>
+    .cb-toggle {
+      position: fixed;
+      top: 20px;
+      right: 30px;
+      z-index: 1000;
+      font-weight: bold;
+      background: white;
+      color: black;
+      border: 2px solid black;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    body.cb-mode {
+      filter: grayscale(40%) contrast(120%);
+    }
+  </style>
 </head>
 <body>
-    {% include 'navbar_lecturer.html' %}
+  {% include 'navbar_lecturer.html' %}
 
-    <div class="main-content">
-        <h1 class="dashboard-title">Welcome, {{ user.username }} (Lecturer)</h1>
+  <!-- Colorblind Mode Toggle Button -->
+  <button class="cb-toggle" onclick="toggleCBMode()">Colorblind Mode</button>
 
-        <!-- Embedded Dashboard -->
-        <div class="dashboard-container">
-            <iframe src="/dashboard_lecturer/" class="dashboard-frame"></iframe>
-        </div>
+  <div class="main-content">
+    <div class="dashboard-container">
+      <iframe id="lecturer-frame" src="/dashboard_lecturer/" class="dashboard-frame"></iframe>
     </div>
+  </div>
+
+  <script>
+    function toggleCBMode() {
+      const iframe = document.getElementById("lecturer-frame");
+      const isOn = document.body.classList.toggle("cb-mode");
+      localStorage.setItem("cbMode", isOn ? "on" : "off");
+
+      const baseSrc = "/dashboard_lecturer/";
+      iframe.src = isOn ? baseSrc + "?cbmode=on" : baseSrc;
+    }
+
+    window.onload = function () {
+      if (localStorage.getItem("cbMode") === "on") {
+        document.body.classList.add("cb-mode");
+        document.getElementById("lecturer-frame").src = "/dashboard_lecturer/?cbmode=on";
+      }
+    };
+  </script>
 </body>
 </html>

@@ -84,7 +84,7 @@ def init_data_science_dashboard(flask_app):
     df = df[column_order]
 
     dash_app.layout = html.Div(children=[
-        html.H1("📊 Data Science - Performance & Grades", style={"textAlign": "center"}),
+       
 
         dcc.Graph(id="grades-fig"),
         dcc.Graph(id="attendance-fig"),
