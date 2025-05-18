@@ -1,17 +1,17 @@
-/* General Page Styles */
+
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f9;
     margin: 0;
 }
 
-/* Adjust content to account for navbar */
+
 .main-content {
-    margin-left: 250px; /* Adjust based on navbar width */
+    margin-left: 250px; 
     padding: 20px;
 }
 
-/* Modules Grid */
+
 .module-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -19,14 +19,14 @@ body {
     padding-top: 20px;
 }
 
-/* Module Card */
+
 .module-card {
     background: white;
     border-radius: 10px;
     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
     overflow: hidden;
     transition: transform 0.3s;
-    cursor: default; /* Prevents the whole card from looking clickable */
+    cursor: default; 
 }
 
 .module-card:hover {
@@ -53,7 +53,7 @@ body {
     font-size: 14px;
 }
 
-/* Ensure only the "View Details" button is clickable */
+
 .module-card a {
     display: inline-block;
     padding: 8px 12px;
@@ -68,7 +68,7 @@ body {
     background-color: #0056b3;
 }
 
-/* Prevent the full card from being clickable */
+
 .module-card a {
-    cursor: pointer; /* Only the link is clickable */
+    cursor: pointer; 
 }

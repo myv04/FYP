@@ -6,7 +6,7 @@ import pandas as pd
 import sqlite3
 from datetime import datetime
 
-# ✅ Import attendance functions
+#  Import attendance functions
 from software_engineering_dashboard import get_agile_attendance, get_agile_grade
 from data_science_dashboard import get_ml_attendance, get_ml_grade
 from dashboard_web_systems import get_web_systems_attendance, get_web_systems_grade
@@ -17,7 +17,7 @@ from data_ethics_dashboard import get_data_ethics_attendance, get_data_ethics_gr
 from software_testing_dashboard import get_software_testing_attendance, get_software_testing_grade
 from cloud_engineering_dashboard import get_cloud_engineering_attendance, get_cloud_engineering_grade
 
-# ✅ Fetch real-time data
+
 def fetch_course_data():
     conn = sqlite3.connect('courses.db')
     conn.row_factory = sqlite3.Row
@@ -51,28 +51,7 @@ def fetch_course_data():
     conn.close()
     return result
 
-# 📊 Gauge chart helper
-def create_gauge_chart(value, title):
-    return go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=value,
-        title={'text': title},
-        domain={'x': [0, 1], 'y': [0, 1]},
-        gauge={
-            'axis': {'range': [0, 5]},
-            'bar': {'color': "darkblue"},
-            'bgcolor': "white",
-            'steps': [
-                {'range': [0, 1], 'color': 'red'},
-                {'range': [1, 2], 'color': 'orange'},
-                {'range': [2, 3], 'color': 'yellow'},
-                {'range': [3, 4], 'color': 'lightgreen'},
-                {'range': [4, 5], 'color': 'green'}
-            ]
-        }
-    ))
 
-# 🔧 Dash app setup
 dash_admin = dash.Dash(
     __name__,
     routes_pathname_prefix="/dashboard_admin/",
@@ -80,7 +59,6 @@ dash_admin = dash.Dash(
 )
 
 dash_admin.layout = html.Div(style={'padding': '20px', 'maxWidth': '1200px', 'margin': '0 auto'}, children=[
-    
 
     html.Div([
         html.H2("📊 Dashboard Statistics"),
@@ -98,12 +76,19 @@ dash_admin.layout = html.Div(style={'padding': '20px', 'maxWidth': '1200px', 'ma
     ]),
 
     html.Div([
-        html.H2("🚀 Quick Actions"),
-        html.Button("Add New Student/Lecturer", id="add-user-btn", n_clicks=0),
-        html.Button("View Recent Enrollments", id="view-enrollments-btn", n_clicks=0),
-        html.Button("Review Flagged Issues", id="review-issues-btn", n_clicks=0),
-        html.Button("Schedule Event", id="schedule-event-btn", n_clicks=0)
-    ], style={'marginTop': '20px'}),
+        html.H2("🔔 Notifications & Logs"),
+        html.Ul([
+            html.Li("Upcoming deadline: Final project report (2 days left)"),
+            html.Li("New user registered: DR Emily Roberts (BSc Data Science DS102)")
+        ])
+    ], style={
+        'marginTop': '20px',
+        'padding': '15px',
+        'backgroundColor': '#fefefe',
+        'border': '1px solid #ddd',
+        'borderRadius': '8px',
+        'boxShadow': '0 1px 4px rgba(0,0,0,0.1)'
+    }),
 
     html.Div([
         html.H2("📈 Charts & Reports"),
@@ -113,21 +98,34 @@ dash_admin.layout = html.Div(style={'padding': '20px', 'maxWidth': '1200px', 'ma
     ]),
 
     html.Div([
-        html.H2("🎓 Student Satisfaction"),
-        html.Div([
-            html.Div([dcc.Graph(id='satisfaction-gauge-ds')], style={'width': '50%', 'display': 'inline-block'}),
-            html.Div([dcc.Graph(id='satisfaction-gauge-se')], style={'width': '50%', 'display': 'inline-block'})
-        ])
-    ]),
-
-    html.Div([
-        html.H2("🔔 Notifications & Logs"),
-        html.Ul([
-            html.Li("Upcoming deadline: Final project submission (2 days left)"),
-            html.Li("Warning: 5 students have attendance below 75%"),
-            html.Li("New user registered: John Doe (Data Science)")
-        ])
-    ], style={'marginTop': '20px'}),
+        html.H2("🎓 Course Overview Summary"),
+        html.Table([
+            html.Tr([
+                html.Th("Courses Under Management", style={'fontSize': '18px', 'border': '1px solid black'}),
+                html.Th("Modules", style={'fontSize': '18px', 'border': '1px solid black'})
+            ]),
+            html.Tr([
+                html.Td("2", style={'fontSize': '36px', 'fontWeight': 'bold', 'color': 'red', 'border': '1px solid black'}),
+                html.Td("9", style={'fontSize': '36px', 'fontWeight': 'bold', 'color': 'red', 'border': '1px solid black'})
+            ]),
+            html.Tr([
+                html.Th("Shared Modules", style={'fontSize': '18px', 'border': '1px solid black'}),
+                html.Th("Upcoming Reviews", style={'fontSize': '18px', 'border': '1px solid black'})
+            ]),
+            html.Tr([
+                html.Td("1", style={'fontSize': '36px', 'fontWeight': 'bold', 'color': 'red', 'border': '1px solid black'}),
+                html.Td("3", style={'fontSize': '36px', 'fontWeight': 'bold', 'color': 'red', 'border': '1px solid black'})
+            ]),
+        ], style={
+            'width': '100%',
+            'borderCollapse': 'collapse',
+            'textAlign': 'center'
+        }),
+    ], style={
+        'marginTop': '30px',
+        'padding': '20px',
+        'backgroundColor': '#ecf0f1'
+    }),
 
     html.Div(id='last-updated', style={'textAlign': 'right', 'marginTop': '20px', 'color': '#7f8c8d'})
 ])
@@ -138,7 +136,7 @@ dash_admin.layout = html.Div(style={'padding': '20px', 'maxWidth': '1200px', 'ma
      Output('total-lecturers', 'children'),
      Output('total-courses', 'children'),
      Output('last-updated', 'children')],
-    [Input('add-user-btn', 'n_clicks')]
+    [Input('user-count-chart', 'figure')]
 )
 def update_stats(_):
     data = fetch_course_data()
@@ -150,7 +148,7 @@ def update_stats(_):
     )
 
 # 📊 User Count Chart
-@dash_admin.callback(Output('user-count-chart', 'figure'), [Input('add-user-btn', 'n_clicks')])
+@dash_admin.callback(Output('user-count-chart', 'figure'), [Input('total-students', 'children')])
 def update_user_count_chart(_):
     data = fetch_course_data()
     labels = [f"{c['name'].replace('BSc ', '')} ({c['year']})" for c in data]
@@ -171,7 +169,7 @@ def update_user_count_chart(_):
     return fig
 
 # 📉 Attendance Chart
-@dash_admin.callback(Output('attendance-chart', 'figure'), [Input('add-user-btn', 'n_clicks')])
+@dash_admin.callback(Output('attendance-chart', 'figure'), [Input('total-students', 'children')])
 def update_attendance_chart(_):
     modules = [
         ("DS201 - Agile Development", get_agile_attendance()),
@@ -202,7 +200,7 @@ def update_attendance_chart(_):
     return fig
 
 # 📈 Grade Chart
-@dash_admin.callback(Output('grade-bar-chart', 'figure'), [Input('add-user-btn', 'n_clicks')])
+@dash_admin.callback(Output('grade-bar-chart', 'figure'), [Input('total-students', 'children')])
 def update_grade_chart(_):
     modules = [
         ("DS201 - Agile Development", get_agile_grade()),
@@ -227,21 +225,6 @@ def update_grade_chart(_):
         xaxis=dict(title="Module")
     )
     return fig
-
-# 🎓 Satisfaction Gauges
-@dash_admin.callback(Output('satisfaction-gauge-ds', 'figure'), [Input('add-user-btn', 'n_clicks')])
-def update_satisfaction_gauge_ds(_):
-    for course in fetch_course_data():
-        if "Data Science" in course['name']:
-            return create_gauge_chart(course['satisfaction'], "Data Science Satisfaction")
-    return create_gauge_chart(0, "Data Science Satisfaction")
-
-@dash_admin.callback(Output('satisfaction-gauge-se', 'figure'), [Input('add-user-btn', 'n_clicks')])
-def update_satisfaction_gauge_se(_):
-    for course in fetch_course_data():
-        if "Software Engineering" in course['name']:
-            return create_gauge_chart(course['satisfaction'], "Software Engineering Satisfaction")
-    return create_gauge_chart(0, "Software Engineering Satisfaction")
 
 # 🔌 Integrate with Flask
 def init_admin_dashboard(server):

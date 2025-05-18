@@ -1,7 +1,7 @@
 import json
 import os
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")  # Change to your actual folder if needed
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")  
 
 def save_data(data, filename):
     path = os.path.join(DATA_DIR, filename)

@@ -5,7 +5,7 @@ from dash.dependencies import Input, Output
 import plotly.express as px
 import pandas as pd
 
-# ✅ Toggle DB mode ON
+
 USE_DB = False
 
 
@@ -23,7 +23,7 @@ def init_data_science_dashboard(flask_app):
         suppress_callback_exceptions=True
     )
 
-    # ✅ Updated version: handles None safely
+   
     def calculate_final_grade(a1, a2, exam, p1, p2):
         try:
             # Convert to float if value exists, else use 0
@@ -112,14 +112,29 @@ def init_data_science_dashboard(flask_app):
         html.H2("📜 Student Performance Table", style={"textAlign": "center", "margin-top": "30px"}),
 
         dash_table.DataTable(
-            id="data-table",
-            columns=[{"name": i, "id": i, "editable": False} for i in column_order],
-            data=df.to_dict("records"),
-            sort_action="native",
-            style_table={"margin": "auto", "width": "95%"},
-            style_cell={"textAlign": "center"},
-            style_header={"backgroundColor": "#2980b9", "color": "white"}
-        ),
+    id="data-table",
+    columns=[{"name": i, "id": i} for i in column_order],
+    data=df.to_dict("records"),
+    sort_action="native",
+    style_table={
+        "width": "100%",      
+        "overflowX": "auto",  
+        "paddingBottom": "30px"
+    },
+    style_cell={
+        "textAlign": "center",
+        "whiteSpace": "normal",        
+        "minWidth": "120px",
+        "width": "120px",
+        "maxWidth": "200px"
+    },
+    style_header={
+        "backgroundColor": "#2980b9",
+        "color": "white",
+        "fontWeight": "bold"
+    }
+),
+
 
         dcc.Store(id='initial-table-data', data=df.to_dict('records')),
         dcc.Store(id='live-data', data=df.to_dict('records'))

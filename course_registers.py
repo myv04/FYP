@@ -6,10 +6,9 @@ import pandas as pd
 import json
 import os
 
-# Blueprint
+
 course_registers = Blueprint("course_registers", __name__)
 
-# Load JSON data
 def load_data():
     file_path = "course_registers.json"
     if os.path.exists(file_path):
@@ -26,7 +25,7 @@ def load_data():
 def init_course_registers(app):
     data = load_data()
     if not data:
-        data = [{"UNI ID": "", "NAME": "", "Role": ""}]  # fallback if JSON is empty
+        data = [{"UNI ID": "", "NAME": "", "Role": ""}]  
 
     df = pd.DataFrame(data)
 
@@ -44,7 +43,7 @@ def init_course_registers(app):
 
     roles = ["All", "Student", "Lecturer", "Admin"]
 
-    # Layout
+    
     dash_app.layout = html.Div([
         html.H2("📜 Course Registers", style={"textAlign": "center", "marginBottom": "20px"}),
 
@@ -101,7 +100,7 @@ def init_course_registers(app):
         )
     ])
 
-    # Clear button resets input
+    
     @dash_app.callback(
         Output("search-input", "value"),
         Input("clear-button", "n_clicks"),
@@ -110,7 +109,6 @@ def init_course_registers(app):
     def clear_input(n_clicks):
         return ""
 
-    # Update table based on dropdowns & search
     @dash_app.callback(
         [Output("course-table", "data"),
          Output("count-summary", "children")],
@@ -123,14 +121,14 @@ def init_course_registers(app):
         if dff.empty:
             return [], "No records found."
 
-        # Filter by course
+        
         filtered = dff[dff["UNI ID"].str.startswith(course_prefix)]
 
-        # Filter by role
+        
         if role_filter != "All":
             filtered = filtered[filtered["Role"] == role_filter]
 
-        # Filter by search in NAME or UNI ID
+        
         if search_text:
             search_terms = [term.strip().lower() for term in search_text.split(",") if term.strip()]
             if search_terms:
@@ -142,7 +140,7 @@ def init_course_registers(app):
                     axis=1
                 )]
 
-        # Count summary
+        
         total = len(filtered)
         role_counts = filtered["Role"].value_counts().to_dict()
         summary = (

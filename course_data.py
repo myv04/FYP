@@ -1,7 +1,7 @@
 # course_data.py
 # -*- coding: utf-8 -*-
 
-# ✅ Data Science Students
+#  Data Science Students
 data_science_students = [
     {"id": "DS6846", "name": "Alex Carter", "attendance": 76, "exam_status": "Fit to Sit", "exam_score": 81,
      "a1_score": 59, "a1_status": "Completed", "a1_penalty": "", "a2_score": 81, "a2_status": "Completed",
@@ -212,7 +212,7 @@ software_engineering_students = [
 
 
 
-# ✅ Big Data Students
+#  Big Data Students
 big_data_students = [
     {"id": "DS978628", "name": "Edward Davis", "attendance": 67, "a1_score": 56, "a1_status": "Completed", "a1_penalty": "🚩 Lateness Penalty (-5%)", "status": "Enrolled"},
     {"id": "DS207643", "name": "Emily Rangel", "attendance": 96, "a1_score": 71, "a1_status": "Completed", "a1_penalty": "", "status": "Enrolled"},
@@ -346,7 +346,7 @@ web_systems_students = [
 
 
 
-# ✅ Lecturers (Can Add More Info Later)
+# 
 lecturers = {
     "data_science": [
         {"id": "DS0001", "name": "Dr. Emily Carter"},

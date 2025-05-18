@@ -1,4 +1,4 @@
-// Open Modal and Load Existing Data
+
 function openEditModal(fieldId) {
     let modal = document.getElementById("editModal");
     let input = document.getElementById("editInput");
@@ -10,12 +10,11 @@ function openEditModal(fieldId) {
     }
 }
 
-// Close Modal
 function closeEditModal() {
     document.getElementById("editModal").style.display = "none";
 }
 
-// Save Changes
+
 function saveEdit() {
     let input = document.getElementById("editInput");
     let fieldId = input.getAttribute("data-field");
@@ -27,7 +26,7 @@ function saveEdit() {
     closeEditModal();
 }
 
-// Close Modal when clicking outside
+
 window.onclick = function(event) {
     let modal = document.getElementById("editModal");
     if (event.target == modal) {

@@ -2,14 +2,14 @@ import dash
 from dash import html, Input, Output
 import sqlite3
 
-# Initialize Dash app
+
 dash_courses = dash.Dash(
     __name__,
     routes_pathname_prefix="/course_dashboard/",
     suppress_callback_exceptions=True
 )
 
-# Fetch course data from database
+
 def fetch_courses():
     try:
         conn = sqlite3.connect("courses.db")
@@ -22,12 +22,11 @@ def fetch_courses():
         print(f"Database error: {e}")
         return []
 
-# Add a new course (dummy functionality for now)
 def add_course():
     try:
         conn = sqlite3.connect("courses.db")
         cursor = conn.cursor()
-        # Example: Add a dummy course (you can replace this with actual logic)
+        
         cursor.execute("INSERT INTO courses (name, code, students_enrolled, lecturers_assigned, status) VALUES (?, ?, ?, ?, ?)",
                        ("New Course", "NEW101", 0, 1, "Active"))
         conn.commit()
@@ -35,7 +34,7 @@ def add_course():
     except Exception as e:
         print(f"Database error: {e}")
 
-# Dashboard Layout with minimal styling
+
 dash_courses.layout = html.Div(
     children=[
         html.H1("Course Management", style={"textAlign": "center"}),
@@ -71,17 +70,17 @@ dash_courses.layout = html.Div(
     ]
 )
 
-# Callback to update the table
+
 @dash_courses.callback(
     Output("course-table-body", "children"),
     [Input("refresh-btn", "n_clicks"), Input("add-course-btn", "n_clicks")]
 )
 def update_table(refresh_clicks, add_clicks):
-    # Handle Add Course button click
+    
     if add_clicks > 0:
         add_course()
 
-    # Fetch updated courses from the database
+    
     courses = fetch_courses()
 
     table_rows = []
@@ -105,6 +104,6 @@ def update_table(refresh_clicks, add_clicks):
 
     return table_rows
 
-# Function to integrate with Flask
+
 def init_course_dashboard(server):
     dash_courses.init_app(server)

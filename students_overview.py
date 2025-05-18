@@ -99,7 +99,7 @@ def init_students_overview(flask_app):
         title="📊 Grade Distribution by Course", barmode="group"
     )
 
-    # Performance comparison (dummy for now, could be dynamic)
+    
     performance_comparison = pd.DataFrame({
         "Metric": ["Assignments", "Exams"],
         "Software Engineering": [78, 85],

@@ -1,4 +1,3 @@
-/* lecturer_profile.css */
 
 body {
     font-family: Arial, sans-serif;
@@ -8,7 +7,7 @@ body {
 }
 
 .main-content {
-    margin-left: 250px;  /* Align with the sidebar width */
+    margin-left: 250px;  
     padding: 30px;
 }
 
@@ -16,7 +15,7 @@ body {
     padding: 30px;
 }
 
-/* Profile Header */
+
 .profile-header {
     text-align: center;
     background-color: #007BFF;
@@ -41,7 +40,7 @@ body {
     font-size: 20px;
 }
 
-/* Profile Sections */
+
 .profile-sections {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -49,7 +48,7 @@ body {
     margin-top: 20px;
 }
 
-/* Info Section */
+
 .info-section {
     background-color: white;
     padding: 20px;

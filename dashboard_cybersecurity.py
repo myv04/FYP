@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import sqlite3
 import json
 
-# ✅ Database Saving Logic (only runs once)
+
 def save_module_data(module_code, module_name, attendance, grade, assignments, exams, deadlines):
     conn = sqlite3.connect("student_performance.db")
     c = conn.cursor()
@@ -25,14 +25,14 @@ def save_module_data(module_code, module_name, attendance, grade, assignments, e
     conn.commit()
     conn.close()
 
-# Create Dash app
+
 dash_cybersecurity = dash.Dash(
     __name__,
     routes_pathname_prefix="/dashboard_cybersecurity/",
     suppress_callback_exceptions=True
 )
 
-# Original Static Data
+
 average_attendance = 78
 remaining_attendance = 100 - average_attendance
 
@@ -42,11 +42,11 @@ assignments = [
     {"name": "Malware Analysis", "score": None, "weight": 25, "status": "Not Started"},
 ]
 
-# Grade Calculation
+
 total_weighted_score = sum((a["score"] / 100) * a["weight"] for a in assignments if a["score"] is not None)
 current_grade = total_weighted_score
 
-# Generate Deadlines
+
 current_date = datetime.now()
 deadline_data = []
 for assignment in assignments:
@@ -57,7 +57,7 @@ for assignment in assignments:
             "Days Left": "TBC" if assignment["status"] == "Not Started" else (current_date + timedelta(days=7) - current_date).days
         })
 
-# ✅ Save to DB
+
 save_module_data(
     module_code="CS205",
     module_name="Cybersecurity",
@@ -214,6 +214,6 @@ dash_cybersecurity.layout = html.Div(style={
     ])
 ])
 
-# Flask Integration
+
 def init_dashboard(server):
     dash_cybersecurity.init_app(server)

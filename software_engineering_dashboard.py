@@ -6,11 +6,11 @@ import plotly.express as px
 import pandas as pd
 import copy
 
-# ✅ Load a fresh deep copy of the raw data (not modified elsewhere)
+
 from course_data import software_engineering_students
 raw_data = copy.deepcopy(software_engineering_students)
 
-# ✅ Force original statuses in case anything mutated them earlier
+
 for student in raw_data:
     if student["a1_status"] == "Completed" and student["a1_penalty"]:
         student["a1_status"] = "Completed"
@@ -104,14 +104,29 @@ def init_software_engineering_dashboard(flask_app):
         html.H2("📜 Student Performance Table", style={"textAlign": "center", "margin-top": "30px"}),
 
         dash_table.DataTable(
-            id="data-table",
-            columns=[{"name": i, "id": i} for i in column_order],
-            data=df.to_dict("records"),
-            sort_action="native",
-            style_table={"margin": "auto", "width": "95%"},
-            style_cell={"textAlign": "center"},
-            style_header={"backgroundColor": "#2980b9", "color": "white"}
-        ),
+    id="data-table",
+    columns=[{"name": i, "id": i} for i in column_order],
+    data=df.to_dict("records"),
+    sort_action="native",
+    style_table={
+        "width": "100%",     
+        "overflowX": "auto",  
+        "paddingBottom": "30px"
+    },
+    style_cell={
+        "textAlign": "center",
+        "whiteSpace": "normal",       
+        "minWidth": "120px",
+        "width": "120px",
+        "maxWidth": "200px"
+    },
+    style_header={
+        "backgroundColor": "#2980b9",
+        "color": "white",
+        "fontWeight": "bold"
+    }
+),
+
 
         dcc.Store(id='live-data', data=df.to_dict('records'))
     ])

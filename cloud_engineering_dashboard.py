@@ -140,7 +140,7 @@ def init_cloud_engineering_dashboard(flask_app):
 
     return dash_app
 
-from course_data import software_engineering_students  # or your specific list
+from course_data import software_engineering_students  
 
 def get_cloud_engineering_attendance():
     df = pd.DataFrame(software_engineering_students)

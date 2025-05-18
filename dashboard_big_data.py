@@ -1,4 +1,4 @@
-# dashboard_big_data.py
+
 from flask import Blueprint
 import dash
 from dash import dcc, html, dash_table
@@ -6,7 +6,7 @@ from dash.dependencies import Input, Output
 import plotly.express as px
 import pandas as pd
 
-# ✅ Use student list from course_data
+
 from course_data import big_data_students
 
 big_data_dashboard = Blueprint("big_data_dashboard", __name__)
@@ -146,7 +146,7 @@ def init_dashboard(flask_app):
     return dash_app
 
 
-# ✅ Admin Dashboard Support
+
 
 def get_big_data_attendance():
     try:

@@ -1,8 +1,9 @@
-# course_data_db.py
+
 import sqlite3
 import pandas as pd
 
-# ✅ Get full course students (used elsewhere)
+
+
 def get_students_by_course(course_id):
     conn = sqlite3.connect("courses.db")
     df = pd.read_sql_query("""
@@ -33,7 +34,7 @@ def get_students_by_course(course_id):
     return df.to_dict(orient="records")
 
 
-# ✅ Used for dashboards by module
+
 
 def get_students_by_module(module_code):
     conn = sqlite3.connect("courses.db")
@@ -73,7 +74,7 @@ def get_students_for_web_systems():
     import sqlite3
     import pandas as pd
 
-    # List of original 50 student IDs to EXCLUDE
+    
     excluded_ids = [
         'SE8946', 'SE5918', 'SE7494', 'SE1509', 'SE8253', 'SE1744', 'SE5043', 'SE8979', 'SE1968', 'SE1852',
         'SE8330', 'SE8811', 'SE9771', 'SE5353', 'SE1179', 'SE5838', 'SE4247', 'SE4796', 'SE3642', 'SE3570',

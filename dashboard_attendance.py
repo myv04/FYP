@@ -22,6 +22,15 @@ module_attendance = {
     "Cybersecurity": 78
 }
 
+# ✅ Module Codes
+module_codes = {
+    "Data Structures": "CS201",
+    "Web Dev": "CS202",
+    "AI": "CS203",
+    "Database Management": "CS204",
+    "Cybersecurity": "CS205"
+}
+
 # Donut Chart (Overall Attendance)
 attendance_chart = go.Figure(
     data=[go.Pie(
@@ -36,10 +45,10 @@ attendance_chart.update_layout(
     margin=dict(l=40, r=40, t=40, b=40)
 )
 
-# Bar Chart (Module-wise Attendance)
+# ✅ Bar Chart (Module-wise Attendance with codes)
 bar_chart = go.Figure(
     data=[go.Bar(
-        x=list(module_attendance.keys()),
+        x=[f"{name} ({module_codes.get(name, '')})" for name in module_attendance.keys()],
         y=list(module_attendance.values()),
         marker=dict(color=["#2ecc71", "#3498db", "#f1c40f", "#9b59b6", "#e67e22"])
     )]
@@ -52,8 +61,16 @@ bar_chart.update_layout(
 )
 
 # Dashboard Layout
-dash_attendance.layout = html.Div(style={'fontFamily': 'Arial, sans-serif', 'backgroundColor': '#f8f9fa', 'padding': '30px'}, children=[
-    html.H2("Attendance Dashboard", style={'textAlign': 'center', 'color': '#34495e', 'marginBottom': '20px'}),
+dash_attendance.layout = html.Div(style={
+    'fontFamily': 'Arial, sans-serif',
+    'backgroundColor': '#f8f9fa',
+    'padding': '30px'
+}, children=[
+    html.H2("Attendance Dashboard", style={
+        'textAlign': 'center',
+        'color': '#34495e',
+        'marginBottom': '20px'
+    }),
 
     # Attendance Donut Chart
     html.Div(dcc.Graph(figure=attendance_chart), style={

@@ -68,10 +68,8 @@
   <div class="main-content">
     <h1>📚 Course Management</h1>
 
-    <div class="button-container">
-      <button class="add-btn" onclick="addCourse()">➕ Add Course</button>
-    </div>
-      <!-- 🆕 Year Filter Dropdown -->
+    
+      
       <div style="text-align: right; width: 90%;">
         <form method="GET" action="/course_management">
           <label for="year">Filter by Year:</label>
@@ -84,7 +82,7 @@
       
 
 
-    <h2>📖 Course Overview</h2>
+    <h2>📖 Courses Overview</h2>
     <table>
       <thead>
         <tr>
@@ -102,7 +100,7 @@
         <tr>
           <td>{{ course.name }}</td>
           <td>{{ course.code }}</td>
-          <td>{{ course.year }}</td> <!-- ✅ Fixed -->
+          <td>{{ course.year }}</td> 
           <td>{{ course.students }}</td>
           <td>{{ course.lecturers }}</td>
           <td>{{ course.status }}</td>
@@ -142,9 +140,7 @@
   window.location.href = `/course_management?year=${year}`;
 }
 
-function addCourse() {
-  alert('➕ Add Course functionality coming soon.');
-}
+
 
 function deleteCourse(courseId) {
   if (confirm("Are you sure you want to delete this course?")) {

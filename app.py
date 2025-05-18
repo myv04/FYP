@@ -1,57 +1,78 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, send_file
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask_bcrypt import Bcrypt
-import pandas as pd
+# --- Standard Library ---
 import os
-from models import db, User
-import openpyxl
-from openpyxl.styles import Font, Alignment, Border, Side
-from openpyxl.worksheet.table import Table, TableStyleInfo
-from flask import send_file
-from flask_login import login_required
-from flask import Flask
-from flask import send_file
+import csv
+import io
+import json
+import random
 import zipfile
+from datetime import datetime, timedelta
+from io import BytesIO, StringIO
+
+import os
+import json
+import random
+import pandas as pd
+import openpyxl
+from io import BytesIO, StringIO
+from openpyxl.styles import Font, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+from flask import send_file
+from fpdf import FPDF
+from io import BytesIO
+import sqlite3
+from student_profile_dashboard import course_modules, module_meta
+
+# --- Third-Party Libraries ---
+import pandas as pd
+import openpyxl
+import sqlite3
+import pdfkit
+from fpdf import FPDF
+from faker import Faker
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.worksheet.table import Table, TableStyleInfo
+from openpyxl.utils import get_column_letter
+from openpyxl.utils.dataframe import dataframe_to_rows
+
+
+from flask import (
+    Flask, render_template, redirect, url_for, request, flash, session,
+    jsonify, send_file, make_response
+)
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import (
+    LoginManager, UserMixin, login_user, login_required,
+    logout_user, current_user
+)
+from flask_bcrypt import Bcrypt
+
+# --- Dash Libraries ---
 import dash_bootstrap_components as dbc
 import dash_html_components as html
 import dash_core_components as dcc
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-import random
-from io import BytesIO
-from flask import Flask, render_template, request, redirect, url_for, jsonify
-from flask import render_template
-import sqlite3  # ✅ Using SQLite for simplicity
-import sqlite3
-from flask import Flask, render_template, redirect, url_for, request, jsonify
-from faker import Faker
-from datetime import datetime, timedelta
-from report_data_loader import fetch_module_data
-import csv
-from student_data_loader import fetch_student_dashboard
-from flask import session
-from flask import Flask, render_template, redirect, url_for, request, flash, session
-from flask_login import login_user, logout_user, login_required
+
+# --- Local Modules ---
+from models import db, User
 from data_persistence import load_data
-##from incase.shared_dashboard_data import get_processed_se_data, get_processed_ds_data
-from openpyxl.utils import get_column_letter
-import json
-from flask import send_file, make_response
-import pdfkit  # 👈 Add this
+from report_data_loader import fetch_module_data
+from student_data_loader import fetch_student_dashboard
 from student_profile_dashboard import course_modules, module_meta
-import io
-# 👇 Add this right after your imports
+from dashboard_admin import fetch_course_data
+from data_science_dashboard import raw_data as ds_raw
+from software_engineering_dashboard import raw_data as se_raw
+from dashboard_big_data import big_data_students
+from mlops_dashboard import raw_data as mlops_raw
+from data_ethics_dashboard import raw_data as ethics_raw
+from software_testing_dashboard import raw_data as testing_raw
+from cloud_engineering_dashboard import raw_data as cloud_raw
+from dashboard_web_systems import web_systems_students
+
 path_wkhtmltopdf = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
 config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
 
 
-
-
-
-
-
-
-
+# --- Log in Logic ---
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'supersecretkey'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
@@ -93,229 +114,16 @@ def login():
 @login_required
 def logout():
     logout_user()
-    session.pop('_flashes', None)  # 👈 this clears existing flash messages
+    session.pop('_flashes', None) 
     flash("You have been logged out.", "info")
     return redirect(url_for('login'))
+
+# --- Student side logic ---
 
 @app.route('/home_student')
 @login_required
 def home_student():
     return render_template('home_student.html', user=current_user)
-
-@app.route('/home_lecturer')
-@login_required
-def home_lecturer():
-    return render_template('home_lecturer.html', user=current_user)
-
-@app.route('/home_admin')
-@login_required
-def home_admin():
-    return render_template('home_admin.html', user=current_user)
-
-@app.route('/admin/courses/modules')
-def admin_courses_modules():
-    return render_template('courses_modules_admin.html')
-
-@app.route('/admin/courses/data-science')
-def view_data_science_modules():
-    return render_template('data_science_modules.html')
-
-@app.route('/admin/courses/software-engineering')
-def view_software_eng_modules():
-    return render_template('software_eng_modules.html')
-
-
-@app.route('/admin/courses/shared')
-def view_shared_modules():
-    return render_template('shared_modules.html')
-
-
-
-@app.route("/admin/modules/web-systems")
-def web_systems_dashboard_page():
-    return render_template("web_systems_dashboard.html")
-
-
-
-
-
-@app.route('/admin/modules/ml')
-def ml_dashboard_wrapper():
-    return render_template('ml_dashboard_wrapper.html')
-
-@app.route('/admin/modules/agile')
-def agile_dashboard_wrapper():
-    return render_template('agile_dashboard_wrapper.html')
-
-
-@app.route("/admin/modules/big-data")
-def big_data_module_dashboard():
-    return render_template("big-data.html")
-
-
-@app.route("/admin/modules/software-testing")
-def software_testing_dashboard_wrapper():
-    return render_template("software_testing_dashboard_wrapper.html")
-
-@app.route("/admin/modules/cloud-software")
-def cloud_engineering_dashboard_wrapper():
-    return render_template("cloud_engineering_dashboard_wrapper.html")
-
-@app.route("/admin/modules/mlops")
-def mlops_dashboard_wrapper():
-    return render_template("mlops_dashboard_wrapper.html")
-
-@app.route("/admin/modules/data-ethics")
-def data_ethics_dashboard_wrapper():
-    return render_template("data_ethics_dashboard_wrapper.html")
-
-@app.route("/admin/students")
-def student_list():
-    import sqlite3
-    conn = sqlite3.connect("courses.db")
-    query = """
-    SELECT s.id, s.username, c.name AS course_name, c.code AS course_code
-    FROM students s
-    JOIN enrollments e ON s.id = e.student_id
-    JOIN courses c ON e.course_id = c.id
-    WHERE c.id IN (3, 4) AND s.role = 'Student'
-    LIMIT 950
-"""
-
-    df = pd.read_sql_query(query, conn)
-    conn.close()
-    return render_template("students.html", students=df.to_dict("records"))
-
-
-@app.route('/admin/student_profile/<student_id>')
-def student_profile_wrapped(student_id):
-    return render_template('student_profile_wrapper.html', student_id=student_id)
-
-@app.route('/admin/lecturers')
-def admin_lecturers():
-    conn = sqlite3.connect('courses.db')
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT lecturer_id, lecturer_name, course_code, module_code, module_week
-        FROM lecturer_assignments
-        ORDER BY lecturer_name, module_code, module_week
-    """)
-    rows = cur.fetchall()
-    conn.close()
-
-    # Group assignments by lecturer
-    lecturers = {}
-    for row in rows:
-        lid = row['lecturer_id']
-        if lid not in lecturers:
-            lecturers[lid] = {
-                'id': row['lecturer_id'],
-                'name': row['lecturer_name'],
-                'course': row['course_code'],
-                'assignments': []
-            }
-        lecturers[lid]['assignments'].append({
-            'module': row['module_code'],
-            'week': row['module_week']
-        })
-
-    return render_template('lecturers.html', lecturers=list(lecturers.values()))
-
-
-@app.route("/admin/lecturer_dashboard/<lecturer_id>")
-def admin_lecturer_dashboard(lecturer_id):
-    import sqlite3
-    import random
-
-    module_meta = {
-        "SE201": {"weeks": ["Sprint Planning", "Daily Standups", "Backlog Grooming", "Scrum Events", "Velocity Tracking", "Agile Metrics", "Burndown Charts", "Product Increments", "Retrospectives", "Agile Estimation", "Kanban vs Scrum", "Agile Wrap-up"]},
-        "SE202": {"weeks": ["HTML Basics", "CSS Styling", "Responsive Design", "JavaScript DOM", "Forms and Validation", "Web Hosting", "REST APIs", "Frontend Frameworks", "Authentication", "Web Security", "Debugging Tools", "Deployment"]},
-        "SE203": {"weeks": ["Testing Basics", "Unit Tests", "Mocks and Stubs", "Integration Testing", "System Testing", "Acceptance Testing", "Test Automation", "Bug Tracking", "Regression Testing", "Performance Testing", "Security Testing", "Test Reporting"]},
-        "SE204": {"weeks": ["Cloud Basics", "IaaS & PaaS", "Deployment Models", "Cloud Storage", "Load Balancing", "Auto-scaling", "Monitoring Tools", "CI/CD Pipelines", "Containers", "Security in Cloud", "Cloud Costing", "Capstone Demo"]},
-        "DS101": {"weeks": ["Data Cleaning", "Feature Engineering", "Model Selection", "Supervised Learning", "Unsupervised Learning", "Neural Networks", "Evaluation Metrics", "Model Deployment", "Overfitting & Underfitting", "Hyperparameter Tuning", "Bias-Variance Tradeoff", "Final Review"]},
-        "DS102": {"weeks": ["Intro to Big Data", "Hadoop Ecosystem", "Spark Basics", "Data Lakes & Warehouses", "Data Ingestion", "ETL Pipelines", "MapReduce", "Stream Processing", "Data Storage", "Scalability", "Big Data Tools", "Case Study"]},
-        "DS203": {"weeks": ["DevOps & MLOps", "Model Deployment", "API Integration", "Continuous Delivery", "Dockerization", "Monitoring Models", "Data Drift", "Model Logging", "Scaling Inference", "Deployment Tools", "Model Governance", "Final Review"]},
-        "DS204": {"weeks": ["Data Ethics Intro", "Bias in AI", "Fairness Metrics", "Case Studies", "Consent Mechanisms", "GDPR", "Data Security", "Responsible AI", "Transparency", "Accountability", "Audit Frameworks", "Wrap-Up"]}
-    }
-
-    conn = sqlite3.connect("courses.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT DISTINCT lecturer_id, lecturer_name, course_code
-        FROM lecturer_assignments
-        WHERE lecturer_id = ?
-    """, (lecturer_id,))
-    row = cursor.fetchone()
-
-    if not row:
-        conn.close()
-        return "Lecturer not found", 404
-
-    lecturer_id, lecturer_name, course_code = row
-
-    cursor.execute("""
-        SELECT module_code, module_week
-        FROM lecturer_assignments
-        WHERE lecturer_id = ?
-    """, (lecturer_id,))
-    assignments = cursor.fetchall()
-    conn.close()
-
-    week_data = []
-    for mod, week in assignments:
-        weeks_list = module_meta.get(mod, {}).get("weeks", [])
-        try:
-            week_index = weeks_list.index(week) + 1
-        except ValueError:
-            week_index = 999  # fallback value to push unknowns to bottom
-
-        total_students = random.randint(180, 260)
-        attended = random.randint(140, total_students)
-
-        week_data.append({
-            "module": mod,
-            "week": f"{week} (Week {week_index})",
-            "week_label": f"{week} (Week {week_index})",
-            "week_num": week_index,
-            "attended": attended,
-            "total": total_students,
-            "percentage": round((attended / total_students) * 100, 1)
-        })
-
-    # ✅ Sort chronologically by week number
-    week_data.sort(key=lambda x: x["week_num"])
-
-    return render_template("admin_lecturer_dashboard.html",
-                           lecturer_name=lecturer_name,
-                           lecturer_id=lecturer_id,
-                           course_code=course_code,
-                           week_data=week_data)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 @app.route('/student_profile')
@@ -356,126 +164,23 @@ def db_dashboard():
 def cybersecurity_dashboard():
     return render_template('cybersecurity_dashboard.html')
 
+
 @app.route('/attendance_dashboard')
 @login_required
 def attendance_dashboard():
     return render_template('attendance_dashboard.html')
 
-@app.route('/software_engineering_dashboard')
-@login_required
-def software_engineering_dashboard():
-    return render_template('software_engineering_dashboard.html')
 
-@app.route('/data_science_dashboard')
-@login_required
-def data_science_dashboard_page():
-    return render_template('data_science_dashboard.html')
-
-@app.route('/course_registers')
-def course_registers_page():
-    return render_template('course_registers.html')
-
-@app.route('/lecturer_profile')
-@login_required
-def lecturer_profile():
-    return render_template('lecturer_profile.html')
-
-@app.route('/courses')
-def courses():
-    return render_template('courses.html')  # Replace with the actual template or logic for courses
-
-@app.route('/students')
-def students():
-    return render_template('students.html')  # Replace with the actual template or logic for students
-
-@app.route('/reports')
-def reports():
-    return render_template('reports.html')  # Replace with the actual template or logic for reports
 
 @app.route('/export')
 def export():
-    return render_template('export.html')  # Replace with the actual template or logic for export
-
-@app.route('/students_overview')
-@login_required
-def students_overview_page():
-    return render_template('students_overview.html')
-
-@app.route("/student_attendance_insights/")
-@login_required
-def student_attendance_insights_page():
-    return render_template("student_attendance_insights.html")
-
-@app.route('/export_lecturer')
-@login_required
-def export_lecturer():
-    return render_template('lecturer_export.html')
-
-@app.route('/download_excel_overview_dashboard')
-@login_required
-def download_excel_overview_dashboard():
-    return send_file("path/to/overview_dashboard.xlsx", as_attachment=True)
-
-@app.route('/download_csv_overview_dashboard')
-@login_required
-def download_csv_overview_dashboard():
-    return send_file("path/to/overview_dashboard.csv", as_attachment=True)
-
-@app.route('/download_excel_software_engineering')
-@login_required
-def download_excel_software_engineering():
-    return send_file("path/to/software_engineering.xlsx", as_attachment=True)
-
-@app.route('/download_csv_software_engineering')
-@login_required
-def download_csv_software_engineering():
-    return send_file("path/to/software_engineering.csv", as_attachment=True)
-
-@app.route('/download_excel_data_science')
-@login_required
-def download_excel_data_science():
-    return send_file("path/to/data_science.xlsx", as_attachment=True)
-
-@app.route('/download_csv_data_science')
-@login_required
-def download_csv_data_science():
-    return send_file("path/to/data_science.csv", as_attachment=True)
-
-@app.route('/download_excel_students_overview')
-@login_required
-def download_excel_students_overview():
-    return send_file("path/to/students_overview.xlsx", as_attachment=True)
-
-@app.route('/download_csv_students_overview')
-@login_required
-def download_csv_students_overview():
-    return send_file("path/to/students_overview.csv", as_attachment=True)
-
-@app.route('/download_excel_student_attendance_insights')
-@login_required
-def download_excel_student_attendance_insights():
-    return send_file("path/to/student_attendance_insights.xlsx", as_attachment=True)
-
-@app.route('/download_csv_student_attendance_insights')
-@login_required
-def download_csv_student_attendance_insights():
-    return send_file("path/to/student_attendance_insights.csv", as_attachment=True)
-
-def export_file(df, filename, file_type="excel"):
-    if file_type == "excel":
-        file_path = f"{filename}.xlsx"
-        df.to_excel(file_path, index=False)
-    else:
-        file_path = f"{filename}.csv"
-        df.to_csv(file_path, index=False)
-
-    return send_file(file_path, as_attachment=True)
+    return render_template('export.html')  
 
 
 # EXPORT for STUDENT-SIDE MODULES #
 def generate_module_report_from_dict(module_data, file_type):
-    # Create clean filename based on module name
-    safe_name = module_data['module_name'].replace(" ", "_")  # You can also use .replace(" ", "") if preferred
+    
+    safe_name = module_data['module_name'].replace(" ", "_")  
     file_path = f"{safe_name}_Report.{file_type}"
     metrics = module_data["metrics"]
     assignments = module_data["assignments"]
@@ -621,7 +326,7 @@ def download_csv_dsa():
     return generate_module_report_from_dict(module, "csv")
 
 
-####################################################################################################################
+
 def generate_student_dashboard_report(data, file_type):
     file_path = f"Student_Performance_Report.{file_type}"
 
@@ -760,13 +465,6 @@ def generate_student_dashboard_report(data, file_type):
         return send_file(file_path, as_attachment=True, download_name=file_path)
 
 
-
-
-
-
-
-
-
 @app.route('/download_excel_student_performance')
 @login_required
 def download_excel_student_performance():
@@ -778,9 +476,6 @@ def download_excel_student_performance():
 def download_csv_student_performance():
     data = fetch_student_dashboard()
     return generate_student_dashboard_report(data, "csv")
-
-
-
 
 @app.route('/download_excel_attendance')
 @login_required
@@ -806,18 +501,126 @@ def download_csv_attendance():
     conn.close()
     return export_file(df, "Attendance_Report", "csv")
 
-###############################################################################################################################
+# --- End of Student side logic ---
+
+
+
+# --- Lecturer side logic ---
+@app.route('/home_lecturer')
+@login_required
+def home_lecturer():
+    return render_template('home_lecturer.html', user=current_user)
+
+
+@app.route('/students_overview')
+@login_required
+def students_overview_page():
+    return render_template('students_overview.html')
+
+@app.route("/student_attendance_insights/")
+@login_required
+def student_attendance_insights_page():
+    return render_template("student_attendance_insights.html")
 
 
 
 
+@app.route('/software_engineering_dashboard')
+@login_required
+def software_engineering_dashboard():
+    return render_template('software_engineering_dashboard.html')
 
+@app.route('/data_science_dashboard')
+@login_required
+def data_science_dashboard_page():
+    return render_template('data_science_dashboard.html')
+
+@app.route('/course_registers')
+def course_registers_page():
+    return render_template('course_registers.html')
+
+@app.route('/lecturer_profile')
+@login_required
+def lecturer_profile():
+    return render_template('lecturer_profile.html')
+
+@app.route('/courses')
+def courses():
+    return render_template('courses.html') 
+
+
+
+
+@app.route('/export_lecturer')
+@login_required
+def export_lecturer():
+    return render_template('lecturer_export.html')
+
+@app.route('/download_excel_overview_dashboard')
+@login_required
+def download_excel_overview_dashboard():
+    return send_file("path/to/overview_dashboard.xlsx", as_attachment=True)
+
+@app.route('/download_csv_overview_dashboard')
+@login_required
+def download_csv_overview_dashboard():
+    return send_file("path/to/overview_dashboard.csv", as_attachment=True)
+
+@app.route('/download_excel_software_engineering')
+@login_required
+def download_excel_software_engineering():
+    return send_file("path/to/software_engineering.xlsx", as_attachment=True)
+
+@app.route('/download_csv_software_engineering')
+@login_required
+def download_csv_software_engineering():
+    return send_file("path/to/software_engineering.csv", as_attachment=True)
+
+@app.route('/download_excel_data_science')
+@login_required
+def download_excel_data_science():
+    return send_file("path/to/data_science.xlsx", as_attachment=True)
+
+@app.route('/download_csv_data_science')
+@login_required
+def download_csv_data_science():
+    return send_file("path/to/data_science.csv", as_attachment=True)
+
+@app.route('/download_excel_students_overview')
+@login_required
+def download_excel_students_overview():
+    return send_file("path/to/students_overview.xlsx", as_attachment=True)
+
+@app.route('/download_csv_students_overview')
+@login_required
+def download_csv_students_overview():
+    return send_file("path/to/students_overview.csv", as_attachment=True)
+
+@app.route('/download_excel_student_attendance_insights')
+@login_required
+def download_excel_student_attendance_insights():
+    return send_file("path/to/student_attendance_insights.xlsx", as_attachment=True)
+
+@app.route('/download_csv_student_attendance_insights')
+@login_required
+def download_csv_student_attendance_insights():
+    return send_file("path/to/student_attendance_insights.csv", as_attachment=True)
+
+def export_file(df, filename, file_type="excel"):
+    if file_type == "excel":
+        file_path = f"{filename}.xlsx"
+        df.to_excel(file_path, index=False)
+    else:
+        file_path = f"{filename}.csv"
+        df.to_csv(file_path, index=False)
+
+    return send_file(file_path, as_attachment=True)
 
 
 
 
 # lecturers exports
-# ✅ Function to generate Lecturer Dashboard Export with updated data
+# Function to generate Lecturer Dashboard Export
 def generate_lecturer_dashboard_report(file_type="xlsx"):
     file_path = f"overview_dashboard.{file_type}"
 
@@ -846,7 +649,7 @@ def generate_lecturer_dashboard_report(file_type="xlsx"):
         except:
             return 0
 
-    # Load and process raw data
+    # Load and process  data
     se_df = pd.DataFrame(software_engineering_students)
     ds_df = pd.DataFrame(data_science_students)
 
@@ -890,7 +693,7 @@ def generate_lecturer_dashboard_report(file_type="xlsx"):
    
 
 
-    # ✅ Export Logic
+    # Export Logic
     if file_type == "xlsx":
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -950,14 +753,13 @@ def download_excel_lecturer_dashboard():
     file_path = generate_lecturer_dashboard_report("xlsx")
     return send_file(file_path, as_attachment=True, download_name="Lecturer_Overview_Dashboard.xlsx")
 
-
 @app.route('/download_csv_lecturer_dashboard')
 @login_required
 def download_csv_lecturer_dashboard():
     file_path = generate_lecturer_dashboard_report("csv")
     return send_file(file_path, as_attachment=True, download_name="Lecturer_Overview_Dashboard.csv")
 
-# ✅ Function to generate Software Engineering Dashboard Export
+#  Function to generate Software Engineering Dashboard Export
 def generate_software_engineering_report(file_type="excel"):
     from course_data import software_engineering_students
     import pandas as pd
@@ -1073,7 +875,7 @@ def download_csv_software_engineering_dashboard():
     )
 
 
-# ✅ Function to generate Data Science Dashboard Export
+#  Function to generate Data Science Dashboard Export
 def generate_data_science_report(file_type="excel"):
     from course_data import data_science_students
     import pandas as pd
@@ -1167,7 +969,7 @@ def generate_data_science_report(file_type="excel"):
 
 
 
-# ✅ Flask Routes to Export Data Science Report
+#  Flask Routes to Export Data Science Report
 @app.route('/download_excel_data_science_dashboard')
 @login_required
 def download_excel_data_science_dashboard():
@@ -1260,7 +1062,7 @@ def generate_students_overview_report(file_type="xlsx"):
     df["Grade Range"] = df["Final Grade"].apply(get_grade_band)
     grade_dist = df.groupby(["Course", "Grade Range"]).size().reset_index(name="Count")
 
-    # ✅ Mocked Performance Comparison (adjust if dynamic later)
+    
     performance_comparison = pd.DataFrame({
         "Metric": ["Assignments", "Exams"],
         "Software Engineering": [78, 85],
@@ -1309,7 +1111,7 @@ def generate_students_overview_report(file_type="xlsx"):
         row = write_table(row, 2, "🚨 At-Risk Students", at_risk)
         row = write_table(row, 2, "🌟 Top Performing Students", top)
 
-        # ✅ Auto-fit columns
+        
         for col_idx in range(1, ws.max_column + 1):
             max_len = 0
             for cell in ws[get_column_letter(col_idx)]:
@@ -1364,14 +1166,6 @@ def download_csv_students_overview_dashboard():
 
 
 
-import os
-import json
-import random
-import pandas as pd
-import openpyxl
-from io import BytesIO, StringIO
-from openpyxl.styles import Font, PatternFill, Border, Side
-from openpyxl.utils import get_column_letter
 
 def generate_student_attendance_insights_report(file_type="xlsx"):
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -1447,7 +1241,7 @@ def generate_student_attendance_insights_report(file_type="xlsx"):
                     cell = ws.cell(row=row_idx, column=col_idx, value=value)
                     cell.border = border
 
-                    # Attendance fill colors
+                    
                     if isinstance(value, (int, float)):
                         if value == 100:
                             cell.fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")  # Green
@@ -1509,10 +1303,10 @@ def download_csv_student_attendance_insights_renamed():
 
 
 
-#✅ Function to generate Course Registers Export
+# Function to generate Course Registers Export
 def generate_course_registers_report(file_type="xlsx"):
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    json_path = os.path.join(BASE_DIR, "course_registers.json")  # ✅ your main folder
+    json_path = os.path.join(BASE_DIR, "course_registers.json")  
 
     try:
         with open(json_path, "r", encoding="utf-8") as f:
@@ -1527,7 +1321,7 @@ def generate_course_registers_report(file_type="xlsx"):
 
     df = pd.DataFrame(data)
 
-    # Split students by course based on UNI ID prefix
+    
     df_se = df[df["UNI ID"].str.startswith("SE")]
     df_ds = df[df["UNI ID"].str.startswith("DS")]
 
@@ -1601,9 +1395,209 @@ def download_csv_course_registers():
         download_name="Course_Registers.csv",
         as_attachment=True
     )
+# --- End of Lecturer side logic ---
 
-## for admin course management
-# ====================
+
+
+# --- Admin side logic ---
+@app.route('/home_admin')
+@login_required
+def home_admin():
+    return render_template('home_admin.html', user=current_user)
+
+@app.route('/admin/courses/modules')
+def admin_courses_modules():
+    return render_template('courses_modules_admin.html')
+
+@app.route('/admin/courses/data-science')
+def view_data_science_modules():
+    return render_template('data_science_modules.html')
+
+@app.route('/admin/courses/software-engineering')
+def view_software_eng_modules():
+    return render_template('software_eng_modules.html')
+
+
+@app.route('/admin/courses/shared')
+def view_shared_modules():
+    return render_template('shared_modules.html')
+
+
+
+@app.route("/admin/modules/web-systems")
+def web_systems_dashboard_page():
+    return render_template("web_systems_dashboard.html")
+
+
+@app.route('/admin/modules/ml')
+def ml_dashboard_wrapper():
+    return render_template('ml_dashboard_wrapper.html')
+
+@app.route('/admin/modules/agile')
+def agile_dashboard_wrapper():
+    return render_template('agile_dashboard_wrapper.html')
+
+
+@app.route("/admin/modules/big-data")
+def big_data_module_dashboard():
+    return render_template("big-data.html")
+
+
+@app.route("/admin/modules/software-testing")
+def software_testing_dashboard_wrapper():
+    return render_template("software_testing_dashboard_wrapper.html")
+
+@app.route("/admin/modules/cloud-software")
+def cloud_engineering_dashboard_wrapper():
+    return render_template("cloud_engineering_dashboard_wrapper.html")
+
+@app.route("/admin/modules/mlops")
+def mlops_dashboard_wrapper():
+    return render_template("mlops_dashboard_wrapper.html")
+
+@app.route("/admin/modules/data-ethics")
+def data_ethics_dashboard_wrapper():
+    return render_template("data_ethics_dashboard_wrapper.html")
+
+@app.route("/admin/students")
+def student_list():
+    import sqlite3
+    conn = sqlite3.connect("courses.db")
+    query = """
+    SELECT s.id, s.username, c.name AS course_name, c.code AS course_code
+    FROM students s
+    JOIN enrollments e ON s.id = e.student_id
+    JOIN courses c ON e.course_id = c.id
+    WHERE c.id IN (3, 4) AND s.role = 'Student'
+    LIMIT 950
+"""
+
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    return render_template("students.html", students=df.to_dict("records"))
+
+
+@app.route('/admin/student_profile/<student_id>')
+def student_profile_wrapped(student_id):
+    return render_template('student_profile_wrapper.html', student_id=student_id)
+
+@app.route('/admin/lecturers')
+def admin_lecturers():
+    conn = sqlite3.connect('courses.db')
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT lecturer_id, lecturer_name, course_code, module_code, module_week
+        FROM lecturer_assignments
+        ORDER BY lecturer_name, module_code, module_week
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    # Group assignments by lecturer
+    lecturers = {}
+    for row in rows:
+        lid = row['lecturer_id']
+        if lid not in lecturers:
+            lecturers[lid] = {
+                'id': row['lecturer_id'],
+                'name': row['lecturer_name'],
+                'course': row['course_code'],
+                'assignments': []
+            }
+        lecturers[lid]['assignments'].append({
+            'module': row['module_code'],
+            'week': row['module_week']
+        })
+
+    return render_template('lecturers.html', lecturers=list(lecturers.values()))
+
+
+@app.route("/admin/lecturer_dashboard/<lecturer_id>")
+def admin_lecturer_dashboard(lecturer_id):
+    import sqlite3
+    import random
+
+    module_meta = {
+        "SE201": {"weeks": ["Sprint Planning", "Daily Standups", "Backlog Grooming", "Scrum Events", "Velocity Tracking", "Agile Metrics", "Burndown Charts", "Product Increments", "Retrospectives", "Agile Estimation", "Kanban vs Scrum", "Agile Wrap-up"]},
+        "SE202": {"weeks": ["HTML Basics", "CSS Styling", "Responsive Design", "JavaScript DOM", "Forms and Validation", "Web Hosting", "REST APIs", "Frontend Frameworks", "Authentication", "Web Security", "Debugging Tools", "Deployment"]},
+        "SE203": {"weeks": ["Testing Basics", "Unit Tests", "Mocks and Stubs", "Integration Testing", "System Testing", "Acceptance Testing", "Test Automation", "Bug Tracking", "Regression Testing", "Performance Testing", "Security Testing", "Test Reporting"]},
+        "SE204": {"weeks": ["Cloud Basics", "IaaS & PaaS", "Deployment Models", "Cloud Storage", "Load Balancing", "Auto-scaling", "Monitoring Tools", "CI/CD Pipelines", "Containers", "Security in Cloud", "Cloud Costing", "Capstone Demo"]},
+        "DS101": {"weeks": ["Data Cleaning", "Feature Engineering", "Model Selection", "Supervised Learning", "Unsupervised Learning", "Neural Networks", "Evaluation Metrics", "Model Deployment", "Overfitting & Underfitting", "Hyperparameter Tuning", "Bias-Variance Tradeoff", "Final Review"]},
+        "DS102": {"weeks": ["Intro to Big Data", "Hadoop Ecosystem", "Spark Basics", "Data Lakes & Warehouses", "Data Ingestion", "ETL Pipelines", "MapReduce", "Stream Processing", "Data Storage", "Scalability", "Big Data Tools", "Case Study"]},
+        "DS203": {"weeks": ["DevOps & MLOps", "Model Deployment", "API Integration", "Continuous Delivery", "Dockerization", "Monitoring Models", "Data Drift", "Model Logging", "Scaling Inference", "Deployment Tools", "Model Governance", "Final Review"]},
+        "DS204": {"weeks": ["Data Ethics Intro", "Bias in AI", "Fairness Metrics", "Case Studies", "Consent Mechanisms", "GDPR", "Data Security", "Responsible AI", "Transparency", "Accountability", "Audit Frameworks", "Wrap-Up"]}
+    }
+
+    conn = sqlite3.connect("courses.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT DISTINCT lecturer_id, lecturer_name, course_code
+        FROM lecturer_assignments
+        WHERE lecturer_id = ?
+    """, (lecturer_id,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return "Lecturer not found", 404
+
+    lecturer_id, lecturer_name, course_code = row
+
+    cursor.execute("""
+        SELECT module_code, module_week
+        FROM lecturer_assignments
+        WHERE lecturer_id = ?
+    """, (lecturer_id,))
+    assignments = cursor.fetchall()
+    conn.close()
+
+    week_data = []
+    for mod, week in assignments:
+        weeks_list = module_meta.get(mod, {}).get("weeks", [])
+        try:
+            week_index = weeks_list.index(week) + 1
+        except ValueError:
+            week_index = 999  
+
+        total_students = random.randint(180, 260)
+        attended = random.randint(140, total_students)
+
+        week_data.append({
+            "module": mod,
+            "week": f"{week} (Week {week_index})",
+            "week_label": f"{week} (Week {week_index})",
+            "week_num": week_index,
+            "attended": attended,
+            "total": total_students,
+            "percentage": round((attended / total_students) * 100, 1)
+        })
+
+    
+    week_data.sort(key=lambda x: x["week_num"])
+
+    return render_template("admin_lecturer_dashboard.html",
+                           lecturer_name=lecturer_name,
+                           lecturer_id=lecturer_id,
+                           course_code=course_code,
+                           week_data=week_data)
+
+
+
+
+
+ 
+@app.route('/students')
+def students():
+    return render_template('students.html')  
+
+@app.route('/reports')
+def reports():
+    return render_template('reports.html')  
+
+
 # Database Connection
 # ====================
 def get_db_connection():
@@ -1611,14 +1605,13 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-# ====================
+
 # API: Fetch All Courses
 # ====================
 @app.route('/api/courses', methods=['GET'])
 def get_courses():
     courses = fetch_course_data()  # ✅ Use your cleaned final_data
     return jsonify(courses)
-
 
 
 def fetch_course_data():
@@ -1630,7 +1623,7 @@ def fetch_course_data():
     for course in courses:
         course_id = course['id']
 
-        # Live counts
+       
         student_count = conn.execute('''
             SELECT COUNT(*) FROM students s
             JOIN enrollments e ON s.id = e.student_id
@@ -1647,7 +1640,7 @@ def fetch_course_data():
             'id': course_id,
             'name': course['name'],
             'code': course['code'],
-            'year': course['year'],   # ✅ added safely
+            'year': course['year'],   
             'status': course['status'],
             'students': student_count,
             'lecturers': lecturer_count
@@ -1658,20 +1651,6 @@ def fetch_course_data():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ====================
 # Route: Course Management Page
 # ====================
 @app.route('/course_management')
@@ -1713,9 +1692,9 @@ def course_management():
 
 
 
-# ====================
+
 # API: Fetch all students in a course
-# ====================
+
 @app.route('/api/course/<int:course_id>/students', methods=['GET'])
 def get_course_students(course_id):
     conn = get_db_connection()
@@ -1727,20 +1706,20 @@ def get_course_students(course_id):
     conn.close()
     return jsonify([dict(student) for student in students])
 
-## ====================
+
 # Route: View Course Page (students with 'Removed' status hidden)
 # ====================
 @app.route('/course/<int:course_id>/view')
 def view_course(course_id):
     conn = get_db_connection()
 
-    # Get course info
+    
     course = conn.execute('SELECT * FROM courses WHERE id = ?', (course_id,)).fetchone()
     if not course:
         conn.close()
         return "Course Not Found", 404
 
-    # ✅ FIXED: Add s.id AS uni_id so template can use user['uni_id']
+   
     users_in_course = conn.execute('''
     SELECT s.username, s.email, s.role, s.join_date, s.enrollment_status, s.id AS uni_id
     FROM students s
@@ -1763,7 +1742,7 @@ def view_course(course_id):
     course = dict(course)
     users = [dict(user) for user in users_in_course]
 
-    # Template logic stays the same
+   
     if "Software" in course["name"]:
         template = 'view_software.html'
     elif "Data Science" in course["name"]:
@@ -1778,8 +1757,8 @@ def view_course(course_id):
     return render_template(template, course=course, users=users)
 
 
-# ====================
-# Route: Edit Course Page (Admin view)
+
+# Route: Edit Course Page 
 # ====================
 @app.route('/course/<int:course_id>/edit', methods=['GET', 'POST'])
 def edit_course(course_id):
@@ -1804,7 +1783,7 @@ def edit_course(course_id):
 
         return redirect(url_for('edit_course', course_id=course_id, success='Course updated successfully!'))
 
-    # ✅ DO NOT exclude removed users here
+    
     course = conn.execute('SELECT * FROM courses WHERE id = ?', (course_id,)).fetchone()
 
     users_in_course = conn.execute('''
@@ -1854,7 +1833,7 @@ def edit_course(course_id):
 
 
 
-# ====================
+
 # Route: Add New User to Course
 # ====================
 @app.route('/course/<int:course_id>/add_user', methods=['POST'])
@@ -1880,13 +1859,12 @@ def add_user(course_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # ✅ Insert student using their custom string ID (e.g. SE8946)
     cursor.execute('''
         INSERT INTO students (id, username, email, role, join_date, enrollment_status)
         VALUES (?, ?, ?, ?, ?, ?)
     ''', (uni_id, name, email, role, join_date, enrollment_status))
 
-    # ✅ Use that same custom ID for enrollment
+   
     student_id = uni_id
 
     cursor.execute('''
@@ -1900,8 +1878,8 @@ def add_user(course_id):
     return redirect(url_for('edit_course', course_id=course_id, success='Person added successfully!'))
 
 
-# ====================
-# Route: Archive (Soft Delete) User
+
+# Route: Archive 
 # ====================
 @app.route('/course/<int:course_id>/delete_user/<user_id>', methods=['POST'])
 def delete_user(course_id, user_id):
@@ -1916,7 +1894,7 @@ def delete_user(course_id, user_id):
     return redirect(url_for('edit_course', course_id=course_id, success='User archived successfully!'))
 
 
-# ====================
+
 # Route: Restore Archived User
 # ====================
 @app.route('/course/<int:course_id>/restore_user/<user_id>', methods=['POST'])
@@ -1935,7 +1913,7 @@ def restore_user(course_id, user_id):
     return redirect(url_for('edit_course', course_id=course_id, success='User restored successfully!'))
 
 
-# ====================
+
 # courses/modules help
 # ====================
 @app.route('/seed_dashboard_data')
@@ -1946,7 +1924,7 @@ def seed_dashboard_data():
     conn = sqlite3.connect("courses.db")
     cursor = conn.cursor()
 
-    # Create tables if not exist
+    
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS dashboard_big_data (
         id TEXT PRIMARY KEY,
@@ -1965,7 +1943,7 @@ def seed_dashboard_data():
     )
     ''')
 
-    # Get 2025 Data Science students
+    
     ds_students = cursor.execute('''
     SELECT s.id, s.username
     FROM students s
@@ -1974,7 +1952,7 @@ def seed_dashboard_data():
     WHERE c.name LIKE '%Data Science%' AND c.year = 2025
     ''').fetchall()
 
-    # Get 2025 Software Engineering students
+    
     se_students = cursor.execute('''
     SELECT s.id, s.username
     FROM students s
@@ -1983,7 +1961,7 @@ def seed_dashboard_data():
     WHERE c.name LIKE '%Software Engineering%' AND c.year = 2025
     ''').fetchall()
 
-    # Seed Big Data table
+    
     for student_id, name in ds_students:
         score = random.randint(55, 95)
         attendance = random.randint(65, 100)
@@ -1992,7 +1970,7 @@ def seed_dashboard_data():
         VALUES (?, ?, ?, ?)
         ''', (student_id, name, score, attendance))
 
-    # Seed Web Systems table
+    
     for student_id, name in se_students:
         score = random.randint(55, 95)
         attendance = random.randint(65, 100)
@@ -2007,7 +1985,7 @@ def seed_dashboard_data():
     return "✅ Dashboard data seeded successfully!"
 
 
-############### admin students export
+
 @app.route('/admin/export_student/<student_id>')
 def export_student_data(student_id):
     import pandas as pd
@@ -2036,7 +2014,7 @@ def export_student_data(student_id):
     attendance = student["attendance"]
     course_code = student["course_code"]
 
-    # Process module data
+    
     data_rows = []
     modules = course_modules.get(course_code, [])
 
@@ -2063,7 +2041,7 @@ def export_student_data(student_id):
                 "Status": status
             })
 
-        # Exam row
+       
         if exam_title:
             exam_score = student.get("exam_score")
             exam_status = student.get("exam_status") or "Not Completed"
@@ -2109,11 +2087,6 @@ def export_student_data(student_id):
     output.seek(0)
     filename = f"{username}_performance.xlsx"
     return send_file(output, download_name=filename, as_attachment=True, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-from flask import send_file
-from fpdf import FPDF
-from io import BytesIO
-import sqlite3
-from student_profile_dashboard import course_modules, module_meta
 
 @app.route('/admin/export_student/<student_id>/pdf')
 def export_student_pdf(student_id):
@@ -2443,8 +2416,7 @@ def export_lecturer_pdf(lecturer_id):
     filename = f"{lecturer_name.replace(' ', '_')}_{lecturer_id}_report.pdf"
     return send_file(buffer, as_attachment=True, download_name=filename, mimetype='application/pdf')
 
-
-################################### adding students and lectuers to admin side
+#### adding students and lectuers to admin side
 @app.route("/api/unassigned_users")
 def get_unassigned_users():
     course_id = request.args.get("course_id", type=int)
@@ -2513,13 +2485,13 @@ def add_student_to_course():
     conn = sqlite3.connect('courses.db')
     cursor = conn.cursor()
 
-    # Check if already enrolled
+    
     cursor.execute("SELECT 1 FROM enrollments WHERE student_id = ? AND course_id = ?", (student_id, course_id))
     if cursor.fetchone():
         conn.close()
         return jsonify({'success': False, 'message': 'Student already enrolled'}), 400
 
-    # Add to enrollments and increment count
+   
     cursor.execute("INSERT INTO enrollments (student_id, course_id) VALUES (?, ?)", (student_id, course_id))
     cursor.execute("UPDATE courses SET students = students + 1 WHERE id = ?", (course_id,))
     conn.commit()
@@ -2541,7 +2513,6 @@ def add_lecturer_to_course():
     conn = sqlite3.connect('courses.db')
     cursor = conn.cursor()
 
-    # Get course code to assign
     cursor.execute("SELECT code FROM courses WHERE id = ?", (course_id,))
     row = cursor.fetchone()
     if not row:
@@ -2550,27 +2521,26 @@ def add_lecturer_to_course():
 
     course_code = row[0]
 
-    # Check if already assigned in lecturer_assignments
     cursor.execute("SELECT 1 FROM lecturer_assignments WHERE lecturer_id = ? AND course_code = ?", (lecturer_id, course_code))
     if cursor.fetchone():
         conn.close()
         return jsonify({'success': False, 'message': 'Lecturer already assigned to this course'}), 400
 
-    # Get lecturer name
+    
     cursor.execute("SELECT username FROM students WHERE id = ?", (lecturer_id,))
     name_row = cursor.fetchone()
     lecturer_name = name_row[0] if name_row else "Unknown"
 
-    # ✅ INSERT into lecturer_assignments
+    
     cursor.execute("""
         INSERT INTO lecturer_assignments (lecturer_id, lecturer_name, course_code, module_code, module_week)
         VALUES (?, ?, ?, '', '')
     """, (lecturer_id, lecturer_name, course_code))
 
-    # ✅ INSERT into enrollments so they show up on course pages
+    
     cursor.execute("INSERT INTO enrollments (student_id, course_id) VALUES (?, ?)", (lecturer_id, course_id))
 
-    # ✅ Update lecturer count
+    
     cursor.execute("UPDATE courses SET lecturers = lecturers + 1 WHERE id = ?", (course_id,))
 
     conn.commit()
@@ -2578,29 +2548,6 @@ def add_lecturer_to_course():
 
     return jsonify({'success': True, 'message': 'Lecturer added successfully'})
 
-
-
-########################################################################################################################
-###admin export
-from flask import send_file
-import pandas as pd
-from dashboard_admin import fetch_course_data
-from data_science_dashboard import raw_data as ds_raw
-from software_engineering_dashboard import raw_data as se_raw
-from dashboard_big_data import big_data_students
-from mlops_dashboard import raw_data as mlops_raw
-from data_ethics_dashboard import raw_data as ethics_raw
-from software_testing_dashboard import raw_data as testing_raw
-from cloud_engineering_dashboard import raw_data as cloud_raw
-from dashboard_web_systems import web_systems_students
-from flask_login import login_required
-from io import BytesIO
-from openpyxl import Workbook
-from openpyxl.utils.dataframe import dataframe_to_rows
-
-# -------------------------
-# Live DataFrame Fetchers
-# -------------------------
 
 def get_admin_overview_df():
     return pd.DataFrame(fetch_course_data())
@@ -2629,9 +2576,7 @@ def get_cloud_engineering_df():
 def get_web_systems_df():
     return pd.DataFrame(web_systems_students)
 
-# -------------------------
-# Enhanced Export Logic
-# -------------------------
+
 
 def export_admin_dashboard(file_type, dashboard_name):
     df_fetchers = {
@@ -2652,7 +2597,7 @@ def export_admin_dashboard(file_type, dashboard_name):
     df = df_fetchers[dashboard_name]()
 
     if dashboard_name == "overview" and file_type == "xlsx":
-        # Enhanced Overview Export with extra sheets
+        
         df_main = df.copy()
 
         df_attendance = df_main[["name", "year", "attendance"]].copy()
@@ -2688,7 +2633,7 @@ def export_admin_dashboard(file_type, dashboard_name):
                          download_name="admin_overview.xlsx",
                          mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-    # Standard CSV / Excel
+    #  CSV / Excel
     filename = f"admin_{dashboard_name}.{file_type}"
     if file_type == "xlsx":
         df.to_excel(filename, index=False)
@@ -2697,7 +2642,7 @@ def export_admin_dashboard(file_type, dashboard_name):
 
     return send_file(filename, as_attachment=True)
 
-# -------------------------
+
 # Flask Routes for Each
 # -------------------------
 
@@ -2803,38 +2748,10 @@ def admin_profile():
     return render_template('admin_profile.html', user=current_user)
 
 
-###########################################################################################################
+# --- End of Admin logic ---
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ✅ Import Dashboards AFTER app is created
+#  Import Dashboards 
 from dashboard_student import init_dashboard as init_student_dashboard
 from data_structures_dashboard import init_dashboard as init_dsa_dashboard
 from dashboard_web_dev import init_dashboard as init_webdev_dashboard
@@ -2842,7 +2759,7 @@ from dashboard_ai import init_dashboard as init_ai_dashboard
 from dashboard_db import init_dashboard as init_db_dashboard
 from dashboard_cybersecurity import init_dashboard as init_cybersecurity_dashboard
 from dashboard_attendance import init_dashboard as init_attendance_dashboard
-# ✅ Import Lecturer Dashboard
+#  Import Lecturer Dashboard
 from dashboard_lecturer import init_lecturer_dashboard
 from software_engineering_dashboard import init_software_engineering_dashboard
 from data_science_dashboard import init_data_science_dashboard
@@ -2862,7 +2779,7 @@ from student_profile_dashboard import init_student_profile_dashboard
 
 
 
-# ✅ Initialize Dashboards (ONLY ONCE)
+#  Initialize Dashboards
 init_student_dashboard(app)
 init_dsa_dashboard(app)
 init_webdev_dashboard(app)

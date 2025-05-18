@@ -1,19 +1,19 @@
-/* General Page Styles */
+
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f9;
     margin: 0;
 }
 
-/* Adjust content to account for navbar */
+
 .main-content {
-    margin-left: 250px; /* Adjust based on navbar width */
+    margin-left: 250px; 
     padding: 40px 20px;
     text-align: center;
-    margin-top: 120px; /* Moves content lower */
+    margin-top: 120px; 
 }
 
-/* Course Grid */
+
 .course-grid {
     display: flex;
     justify-content: center;
@@ -21,14 +21,14 @@ body {
     padding-top: 30px;
 }
 
-/* Course Card */
+
 .course-card {
     background: white;
     border-radius: 15px;
     box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.2);
     overflow: hidden;
-    width: 450px; /* Bigger box */
-    height: 400px; /* Adjusted height */
+    width: 450px; 
+    height: 400px; 
     transition: transform 0.3s, box-shadow 0.3s;
     cursor: pointer;
     display: flex;
@@ -43,11 +43,11 @@ body {
 
 .course-card img {
     width: 100%;
-    height: 200px; /* Adjust image size */
+    height: 200px; 
     object-fit: cover;
 }
 
-/* Course Info */
+
 .course-card .info {
     padding: 20px;
     flex-grow: 1;
@@ -56,20 +56,20 @@ body {
     justify-content: space-between;
 }
 
-/* Course Name */
+
 .course-card h3 {
     margin: 5px 0;
-    font-size: 22px; /* Bigger text */
+    font-size: 22px; 
     font-weight: bold;
 }
 
-/* Module Info */
+
 .course-card p {
     font-size: 16px;
     color: #555;
 }
 
-/* "View Details" Button */
+
 .course-card .btn-container {
     text-align: center;
     padding-bottom: 20px;

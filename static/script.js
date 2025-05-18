@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   
-    // Optional: Toggle password visibility (if you add an eye icon later)
+    
     const togglePassword = document.getElementById("togglePassword");
     if (togglePassword) {
       togglePassword.addEventListener("click", () => {

@@ -1,4 +1,4 @@
-// navbar.js
+
 document.addEventListener("DOMContentLoaded", function () {
     const navLinks = document.querySelectorAll(".sidebar nav a");
 

@@ -1,27 +1,27 @@
-/* Reset default margins & paddings */
+
 body, html {
     margin: 0;
     padding: 0;
     height: 100%;
     width: 100%;
     font-family: Arial, sans-serif;
-    background-color: #f8f9fa; /* Light background */
+    background-color: #f8f9fa; 
 }
 
-/* Main content container */
+
 .content {
-    margin-left: 250px; /* Adjust if navbar width changes */
+    margin-left: 250px; 
     padding: 20px;
-    margin-top: 60px; /* Prevents overlap with navbar */
+    margin-top: 60px; 
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-/* Title and subtitle styles */
+
 h1 {
     font-size: 2rem;
-    color: #2c3e50; /* Dark blue for contrast */
+    color: #2c3e50; 
     text-align: center;
     margin-bottom: 10px;
 }
@@ -33,10 +33,10 @@ p {
     margin-bottom: 20px;
 }
 
-/* Responsive iframe container */
+
 .iframe-container {
     width: 100%;
-    max-width: 1200px; /* Prevents over-expanding */
+    max-width: 1200px; 
     display: flex;
     justify-content: center;
 }
@@ -45,16 +45,16 @@ iframe {
     width: 100%;
     height: 700px;
     border: none;
-    border-radius: 8px; /* Smooth edges */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Soft shadow */
+    border-radius: 8px; 
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); 
 }
 
-/* Responsive adjustments */
+
 @media (max-width: 768px) {
     .content {
         margin-left: 0;
         padding: 10px;
-        margin-top: 80px; /* Extra space for smaller screens */
+        margin-top: 80px; 
     }
 
     h1 {
@@ -62,6 +62,6 @@ iframe {
     }
 
     iframe {
-        height: 600px; /* Adjust iframe size on small screens */
+        height: 600px; 
     }
 }

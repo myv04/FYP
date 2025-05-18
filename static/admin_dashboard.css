@@ -1,4 +1,4 @@
-/* ✅ General Layout */
+
 body, html {
     margin: 0;
     padding: 0;
@@ -6,16 +6,16 @@ body, html {
     background-color: #f8f9fa;
 }
 
-/* ✅ Main Dashboard Container */
+
 .dashboard-container {
-    margin-left: 250px; /* Adjusted for sidebar */
+    margin-left: 250px; 
     padding: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-/* ✅ Dashboard Metrics Section */
+
 .dashboard-metrics {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -24,7 +24,7 @@ body, html {
     margin-bottom: 30px;
 }
 
-/* ✅ Metric Box Styling */
+
 .metric-box {
     background: white;
     border-radius: 10px;
@@ -45,7 +45,7 @@ body, html {
     color: #007BFF;
 }
 
-/* ✅ Embedded Dashboard */
+
 .dashboard-iframe-container {
     width: 90%;
     height: 600px;
@@ -62,7 +62,7 @@ body, html {
     border: none;
 }
 
-/* ✅ Recent Activities */
+
 .recent-activities {
     width: 80%;
     background: white;
