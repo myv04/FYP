@@ -33,15 +33,15 @@ def init_students_overview(flask_app):
     ds_data = load_json_data("data/data_science.json")
 
 
-    # Extract (name, grade) pairs
+    
     software_engineering_data = [(s["Student"], s["Final Grade"]) for s in se_data]
     data_science_data = [(s["Student"], s["Final Grade"]) for s in ds_data]
 
-    # Helper: average attendance
+    # average attendance
     def calc_avg_attendance(data):
         return round(sum(s["Attendance"] for s in data) / len(data), 2)
 
-    # Helper: top/at-risk
+    # top/at-risk
     def get_top_and_at_risk(data, course):
         sorted_data = sorted(data, key=lambda x: x[1], reverse=True)
         top_performing = [{"Student": s[0], "Course": course, "Grade": s[1]} for s in sorted_data[:5]]
@@ -112,7 +112,7 @@ def init_students_overview(flask_app):
 
     dash_app.layout = html.Div(style={"fontFamily": "Arial, sans-serif", "padding": "20px", "maxWidth": "1200px", "margin": "auto"}, children=[
         html.H1("📌 Students Overview Dashboard", style={"textAlign": "center", "color": "#2c3e50"}),
-        html.H2("📊 Students Overview", style={"textAlign": "center", "marginBottom": "30px"}),
+        
 
         html.Div(style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "20px"}, children=[
             dcc.Graph(figure=fig_avg_grade_course),
